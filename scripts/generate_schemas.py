@@ -5,12 +5,28 @@ import json
 from pathlib import Path
 from typing import Any
 
-from tracefetch.contracts import CrawlReceipt, EvidenceReceipt, SearchEnvelope
+from tracefetch.contracts import (
+    CrawlReceipt,
+    DoctorEnvelope,
+    ErrorEnvelope,
+    EvidenceReceipt,
+    ProviderManifest,
+    ProviderRequest,
+    ProviderResponse,
+    SearchEnvelope,
+    SearchResultsEnvelope,
+)
 
 MODELS: dict[str, Any] = {
     "crawl.schema.json": CrawlReceipt,
+    "doctor.schema.json": DoctorEnvelope,
+    "error.schema.json": ErrorEnvelope,
     "evidence.schema.json": EvidenceReceipt,
-    "search.schema.json": SearchEnvelope,
+    "provider-manifest.schema.json": ProviderManifest,
+    "provider-request.schema.json": ProviderRequest,
+    "provider-response.schema.json": ProviderResponse,
+    "provider-search.schema.json": SearchEnvelope,
+    "search.schema.json": SearchResultsEnvelope,
 }
 
 

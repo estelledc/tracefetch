@@ -1,0 +1,33 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "const": "search",
+      "default": "search",
+      "title": "Action",
+      "type": "string"
+    },
+    "limit": {
+      "maximum": 100,
+      "minimum": 1,
+      "title": "Limit",
+      "type": "integer"
+    },
+    "query": {
+      "title": "Query",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "tracefetch.provider-request.v1",
+      "default": "tracefetch.provider-request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "query",
+    "limit"
+  ],
+  "title": "ProviderRequest",
+  "type": "object"
+}

@@ -1,50 +1,140 @@
 # TraceFetch
 
-TraceFetch is a local-first control plane for search and source acquisition. It routes existing
-search/read tools, normalizes their output, and emits a portable evidence bundle that another
-project can verify before trusting or indexing the content.
+TraceFetch 1.0 is an agent-first search and evidence tool. One CLI searches a local workspace,
+queries public discovery providers, invokes explicitly configured command providers, and turns a
+selected public URL into a locally verifiable evidence bundle.
 
-It does not promise to scrape the entire internet. It does not bypass access controls, CAPTCHAs,
-or website terms. Source content is always treated as untrusted data.
+It does not promise to scrape the entire internet, bypass access controls, or decide whether a
+source is true or legally reusable. Search results and normalized source text are always untrusted
+data.
 
-## What it provides
+## Product surface
 
-- Exa and GitHub discovery adapters.
+- Local repository search with relative `path:line` locators, bounded snippets, relevance metadata,
+  `.gitignore` awareness, and a no-dependency Python fallback when ripgrep is absent.
+- Exa and GitHub public discovery with per-provider attempts, bounded query relaxation, provider
+  diversity, truncation disclosure, and stable rate-limit errors.
+- An explicit command-provider protocol for papers, social platforms, internal knowledge bases, or
+  other account-scoped systems without embedding credentials in TraceFetch.
 - A safe direct HTTP reader with redirect, size, domain, robots, and private-network policy.
 - Optional Jina and Firecrawl readers behind explicit remote-data flags.
-- Built-in HTML, JSON, XML, Markdown, and text normalization.
-- Optional MarkItDown conversion for PDF and Office files.
-- Recorded raw artifacts, normalized Markdown, links, line-addressable anchors, and SHA-256
-  receipts.
-- A bounded, same-origin SQLite crawl with checkpoints and resume.
-- `doctor`, machine-readable schemas, and fail-closed bundle verification.
-- Programmatic reader and search-provider injection under explicit, non-reserved names.
+- HTML, JSON, XML, Markdown, and text normalization plus optional MarkItDown document conversion.
+- Portable evidence bundles with raw artifacts, normalized Markdown, links, line-addressable
+  anchors, receipts, SHA-256 digests, and independent local verification.
+- A bounded same-origin SQLite crawl with checkpoints and resume.
+- Strict JSON schemas, deterministic exit codes, `doctor`, typed Python contracts, and wheel/sdist
+  builds.
 
-## Install for development
+## Install
+
+After the `v1.0.0` GitHub release is published:
 
 ```bash
+pipx install "git+https://github.com/estelledc/tracefetch.git@v1.0.0"
+tracefetch --version
+tracefetch doctor
+```
+
+Or install an immutable wheel from the GitHub release assets. PyPI publication is not claimed until
+a trusted publisher is configured and the package is visible on PyPI.
+
+For development:
+
+```bash
+git clone https://github.com/estelledc/tracefetch.git
+cd tracefetch
 uv sync --extra dev --python 3.11
-uv run tracefetch doctor --json
 make check
 ```
 
-## Search
+## Agent contract
+
+Success is one JSON object on stdout. Errors are one `tracefetch.error.v1` object on stderr and use
+stable exit codes. `--format pretty` is an explicit human debugging view; JSON is the default.
+Provider subprocesses receive one `tracefetch.provider-request.v1` object on stdin and must return
+one `tracefetch.provider-response.v1` object on stdout.
+
+Print exact schemas without importing Python:
 
 ```bash
-uv run tracefetch search "evidence provenance crawler" --provider all --limit 5 --json
+tracefetch schema search
+tracefetch schema provider-manifest
+tracefetch schema provider-request
+tracefetch schema provider-response
+tracefetch schema evidence
+tracefetch schema crawl
 ```
 
-Search only discovers candidates. It does not mark a result trustworthy.
+## Search a workspace
+
+The safe default is local-only search rooted at the current directory:
+
+```bash
+tracefetch search "actor isolation Sendable" --limit 8
+```
+
+The result uses `tracefetch.search-results.v1` and preserves `scope`, `provider`, `sensitivity`,
+`evidence_state`, backend attempts, query relaxation, and relevance metadata. Locators are relative
+paths; TraceFetch does not emit an absolute workspace path.
+
+To combine local and public discovery, choose `auto` explicitly:
+
+```bash
+tracefetch search "Swift actor isolation Sendable" \
+  --scope auto --provider all --limit 8
+```
+
+Public-only discovery is also explicit:
+
+```bash
+tracefetch search "evidence provenance crawler" \
+  --scope public --provider all --limit 8
+```
+
+Search only discovers candidates. It does not mark a result trustworthy. Fetch and verify a chosen
+public source before using its content as evidence.
+
+The [workspace dogfood report](docs/workspace-dogfood.md) records the bounded query iterations and
+the claims they do and do not support.
+
+### 0.1 compatibility
+
+The 0.1 command remains available during the 1.x line:
+
+```bash
+tracefetch search "query" --provider all --json
+```
+
+An explicit `--provider` without `--scope` returns the legacy `tracefetch.search.v1` envelope.
+New integrations should always choose `--scope` and consume `tracefetch.search-results.v1`. See the
+[1.0 migration guide](docs/migrating-to-1.0.md).
+
+## Add papers, social, or internal search
+
+TraceFetch never auto-discovers executable plugins. Pass a reviewed provider manifest explicitly:
+
+```bash
+tracefetch doctor --providers ./providers.json
+tracefetch search "actor isolation" \
+  --scope papers --providers ./providers.json
+```
+
+Account-visible and internal providers require `--allow-sensitive`. Internal providers must declare
+`isolated=true` and cannot run in the same request as local or public scopes. Commands execute as
+fixed argv arrays without a shell; diagnostics and metadata are bounded and secret-like metadata
+keys are removed.
+
+See the [provider protocol](docs/provider-protocol.md) and the runnable
+[example provider](examples/providers/README.md).
 
 ## Fetch and verify
 
 ```bash
-uv run tracefetch fetch https://example.com \
+tracefetch fetch https://example.com \
   --reader direct \
-  --output /tmp/tracefetch-example \
-  --json
+  --output /tmp/tracefetch-example
 
-uv run tracefetch verify /tmp/tracefetch-example --json
+tracefetch verify /tmp/tracefetch-example
 ```
 
 The bundle contains:
@@ -57,101 +147,82 @@ links.json        normalized outgoing links
 receipt.json      route, attempts, policy state, quality, and artifact digests
 ```
 
+Only a result with `valid=true` is internally consistent. Verification does not prove source truth,
+permission, trusted time, or independent execution.
+
 ## Bounded crawl
 
 ```bash
-uv run tracefetch crawl https://example.com \
+tracefetch crawl https://example.com \
   --output /tmp/tracefetch-crawl \
-  --reader auto \
+  --reader direct \
   --max-pages 5 \
-  --max-depth 1 \
-  --json
+  --max-depth 1
 
-uv run tracefetch verify /tmp/tracefetch-crawl --json
+tracefetch verify /tmp/tracefetch-crawl
 ```
 
-Interrupted jobs retain `crawl.sqlite3`. Continue only with the same normalized root URL, reader
-and policy fingerprint; changing limits or remote-adapter flags is rejected:
+Interrupted jobs retain `crawl.sqlite3`. Resume only with the same normalized root URL, reader, and
+policy fingerprint:
 
 ```bash
-uv run tracefetch crawl https://example.com \
+tracefetch crawl https://example.com \
   --output /tmp/tracefetch-crawl \
-  --reader auto \
+  --reader direct \
   --max-pages 5 \
   --max-depth 1 \
-  --resume \
-  --json
+  --resume
 ```
 
 ## Optional readers
 
-Remote readers are off by default because they send public source content to a third party.
+Remote readers are off by default because they disclose the target URL and may transmit public
+source content to a third party.
 
 ```bash
 # Jina fallback after direct fetch
-uv run tracefetch fetch https://example.com \
+tracefetch fetch https://example.com \
   --reader auto --allow-remote --output /tmp/tracefetch-jina
 
 # Authenticated Firecrawl adapter
-FIRECRAWL_API_KEY=... uv run tracefetch fetch https://example.com \
+FIRECRAWL_API_KEY=... tracefetch fetch https://example.com \
   --reader firecrawl --allow-authenticated --output /tmp/tracefetch-firecrawl
 ```
 
 Install local document conversion separately:
 
 ```bash
-uv sync --extra markitdown
-uv run tracefetch ingest report.pdf \
+pipx install "tracefetch[markitdown] @ git+https://github.com/estelledc/tracefetch.git@v1.0.0"
+tracefetch ingest report.pdf \
   --source-url https://example.com/report.pdf \
   --output /tmp/tracefetch-report
 ```
 
-Print the exact JSON contracts without importing Python code:
-
-```bash
-uv run tracefetch schema evidence
-uv run tracefetch schema search
-uv run tracefetch schema crawl
-```
-
 ## Security boundary
 
-- Only `http` and `https` are accepted for network acquisition.
-- Embedded URL credentials, localhost, `.local`, private, loopback, link-local, multicast,
-  reserved, and unspecified IP targets are blocked by default.
-- Every redirect target is validated again and automatic redirects are disabled in the client.
-- Built-in network clients ignore ambient proxy environment variables.
-- Responses are streamed under a byte cap.
-- Robots rules are honored by default and network/server failures fail closed. Robots is still a
-  crawler preference signal, not authorization.
-- Remote, authenticated, browser, and device adapters require separate opt-in policies.
-- DNS validation reduces SSRF exposure but does not eliminate DNS rebinding or replace network
-  egress controls.
+- Network acquisition accepts only HTTP and HTTPS.
+- Embedded credentials, localhost, `.local`, private, loopback, link-local, multicast, reserved,
+  and unspecified IP targets are blocked by default.
+- Every redirect target is validated again; built-in clients ignore ambient proxy variables and
+  stream responses under a byte cap.
+- Robots rules are honored by default, but robots is a crawler preference signal rather than
+  authorization.
+- Command providers are explicit trusted local code. TraceFetch validates their protocol and
+  output bounds; it does not sandbox them or remove their access to the caller's account state.
+- Normalized Markdown can contain prompt injection. Downstream agents must treat it as quoted
+  evidence, never as authorization or instructions.
 
-See [the security model](docs/security-model.md) before production use.
+See the [security model](docs/security-model.md) and [security policy](SECURITY.md) before deployment.
 
-Verification checks artifact roles and paths, source/raw identity, derived quality counts, anchors,
-links and crawl SQLite projection. Receipts always declare themselves unsigned, without trusted
-time or independent-execution proof. They detect unsynchronized mutation; they do not prove source
-truth, permission to reuse content, or attestation.
+## Stability and non-goals
 
-## Integration
+TraceFetch 1.0 stabilizes the CLI commands, JSON schemas suffixed `.v1`, provider protocol, Python
+3.11+ support, and evidence-bundle layout for the 1.x line. Additive fields may appear in a new
+schema version; breaking changes require a new major release.
 
-TraceFetch communicates through JSON and portable bundle files rather than Python imports. See
-[the intern-journal integration](examples/intern-journal/README.md) and the
-[adapter contract](docs/adapter-contract.md).
-
-The [architecture](docs/architecture.md) explains the trust layers. The
-[source research](docs/source-research.md) records which ideas were adopted, deferred, or rejected.
-
-## Status
-
-`0.1.0` is a local alpha, not a published package or public repository. The direct reader, local
-ingestion, evidence contract, verifier, search adapters, and bounded crawl have 87 offline tests,
-an 80% coverage gate, schema drift checks, Ruff, strict mypy and wheel/sdist gates. Browser/device
-adapters are contract-level
-extension points, not bundled automation. No production reliability, standards certification,
-security certification or universal website coverage is claimed.
+The release does not claim universal website coverage, CAPTCHA bypass, legal permission inference,
+truth scoring, production SLA, security certification, trusted attestation, RAG indexing, or LLM
+generation. Browser/device adapters and distributed scheduling remain separate extension systems.
 
 ## License
 

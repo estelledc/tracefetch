@@ -23,6 +23,10 @@ source-distribution builds, and whitespace validation when the tree is a Git rep
 - Do not copy source from projects in the research matrix. Record design provenance and comply with
   each optional dependency's license.
 - Contract changes require a schema-version decision and regenerated files in `schemas/`.
+- Search CLI changes must preserve the `tracefetch.search-results.v1` contract or explicitly target
+  the next major release. The 0.1 `--provider` compatibility path remains supported through 1.x.
+- Command providers must use fixed argv, explicit manifests, bounded JSON, sensitivity labels, and
+  internal-scope isolation; they are trusted local processes, not sandboxed extensions.
 - Keep errors machine-readable and avoid secrets in messages, metadata, fixtures, and snapshots.
 
 ## Adapter review checklist

@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "ProviderCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "snippet": {
+          "default": "",
+          "title": "Snippet",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "locator"
+      ],
+      "title": "ProviderCandidate",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "candidates": {
+      "items": {
+        "$ref": "#/$defs/ProviderCandidate"
+      },
+      "title": "Candidates",
+      "type": "array"
+    },
+    "provider": {
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "title": "Provider",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "tracefetch.provider-response.v1",
+      "default": "tracefetch.provider-response.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "provider",
+    "scope",
+    "candidates"
+  ],
+  "title": "ProviderResponse",
+  "type": "object"
+}

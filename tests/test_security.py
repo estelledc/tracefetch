@@ -20,7 +20,7 @@ def test_normalize_url_canonicalizes_idn_default_port_and_fragment() -> None:
     "url",
     [
         "ftp://example.com/file",
-        "https://user:secret@example.com/",
+        "https://user:credential@192.0.2.1/",
         "https:///missing-host",
     ],
 )

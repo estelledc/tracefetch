@@ -111,6 +111,7 @@ class SearchCandidate(StrictModel):
 class SearchAttempt(StrictModel):
     provider: str
     status: Literal["success", "failed", "skipped"]
+    candidate_count: int = Field(default=0, ge=0)
     code: str | None = None
     message: str | None = None
 
@@ -121,6 +122,88 @@ class SearchEnvelope(StrictModel):
     created_at: datetime = Field(default_factory=utc_now)
     candidates: list[SearchCandidate]
     attempts: list[SearchAttempt] = Field(min_length=1)
+
+
+class SearchResultCandidate(StrictModel):
+    """One bounded candidate from a local, public, or explicit plugin scope."""
+
+    rank: int = Field(ge=1)
+    title: str
+    locator: str
+    snippet: str = ""
+    provider: str
+    scope: str
+    source_class: str
+    evidence_state: Literal[
+        "local-source-match",
+        "candidate-only",
+        "candidate-only-internal",
+    ]
+    sensitivity: Literal["public", "project", "account-visible", "internal"]
+    published_at: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SearchResultAttempt(StrictModel):
+    provider: str
+    scope: str
+    status: Literal["success", "failed", "skipped"]
+    candidate_count: int = Field(default=0, ge=0)
+    backend: str | None = None
+    code: str | None = None
+    message: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SearchResultsEnvelope(StrictModel):
+    """Stable agent-facing search result contract introduced in TraceFetch 1.0."""
+
+    schema_version: Literal["tracefetch.search-results.v1"] = "tracefetch.search-results.v1"
+    query: str
+    created_at: datetime = Field(default_factory=utc_now)
+    scopes: list[str] = Field(min_length=1)
+    sensitivity: Literal["public-or-project", "account-visible", "internal"]
+    candidates: list[SearchResultCandidate]
+    attempts: list[SearchResultAttempt] = Field(min_length=1)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ProviderRequest(StrictModel):
+    schema_version: Literal["tracefetch.provider-request.v1"] = "tracefetch.provider-request.v1"
+    action: Literal["search"] = "search"
+    query: str
+    limit: int = Field(ge=1, le=100)
+
+
+class ProviderCandidate(StrictModel):
+    title: str
+    locator: str
+    snippet: str = ""
+    published_at: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProviderResponse(StrictModel):
+    schema_version: Literal["tracefetch.provider-response.v1"] = "tracefetch.provider-response.v1"
+    provider: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")
+    scope: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")
+    candidates: list[ProviderCandidate]
+    warnings: list[str] = Field(default_factory=list)
+
+
+class CommandProviderSpec(StrictModel):
+    name: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")
+    scope: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")
+    command: list[str] = Field(min_length=1)
+    timeout_seconds: float = Field(default=60.0, gt=0, le=300)
+    sensitivity: Literal["public", "project", "account-visible", "internal"]
+    source_class: str = "external-candidate"
+    isolated: bool = False
+
+
+class ProviderManifest(StrictModel):
+    schema_version: Literal["tracefetch.providers.v1"] = "tracefetch.providers.v1"
+    providers: list[CommandProviderSpec] = Field(default_factory=list)
 
 
 class ErrorEnvelope(StrictModel):

@@ -8,7 +8,7 @@ integrity. None of those states proves that a claim is true or that reuse is leg
 
 ```mermaid
 flowchart LR
-    Q["Query"] --> S["Search adapters"]
+    Q["Query"] --> S["Workspace, public, or command providers"]
     S --> C["Candidate URLs"]
     C --> G["Policy gate"]
     G --> R["Reader route"]
@@ -25,8 +25,10 @@ crawler. It composes those systems through explicit adapters instead of reimplem
 
 ## Stages and contracts
 
-1. `search` asks one or more discovery providers for candidate URLs. It emits
-   `tracefetch.search.v1`; it does not download or trust those candidates.
+1. `search` asks the local workspace, public discovery providers, or explicitly configured command
+   providers for candidates. It emits `tracefetch.search-results.v1`; it does not download or trust
+   those candidates. The 0.1 `tracefetch.search.v1` public-provider envelope remains available only
+   through the documented compatibility invocation.
 2. The policy gate canonicalizes URLs, checks domain rules, resolves DNS, rejects non-public
    targets by default, and evaluates robots rules.
 3. A reader route records every attempted adapter. Remote and authenticated adapters are disabled
@@ -54,13 +56,15 @@ Receipts therefore carry `receipt_kind=unsigned-self-reported-diagnostic`, `atte
 
 ## Adapter topology
 
-Built-in search providers are Exa through `mcporter` and GitHub through `gh`. Built-in readers are
-direct HTTP, public Jina Reader, and authenticated Firecrawl. MarkItDown is an optional document
-normalizer, not a network reader.
+Built-in search providers are a bounded local workspace scanner, Exa through `mcporter`, and GitHub
+through `gh`. Explicit command providers add named scopes through a strict JSON process protocol;
+they are trusted local code and are never auto-discovered. Built-in readers are direct HTTP, public
+Jina Reader, and authenticated Firecrawl. MarkItDown is an optional document normalizer, not a
+network reader.
 
-Python callers may inject a `ReaderAdapter` or `SearchProvider` under a new name. The CLI does not
-dynamically load plugins or arbitrary commands in v0.1; exposing executable plugin discovery
-would enlarge the trust boundary and needs a signed/allowlisted design first.
+Python callers may inject a `ReaderAdapter` or legacy `SearchProvider` under a new name. CLI command
+providers require an explicit reviewed manifest, use fixed argv without a shell, and validate
+bounded request/response schemas. They are not sandboxed and inherit the caller's environment.
 
 Browser, device, adaptive-extraction, and distributed-queue systems are extension targets. Their
 output must still enter through the same `ReaderResult` and bundle verifier boundaries.
@@ -76,7 +80,7 @@ output must still enter through the same `ReaderResult` and bundle verifier boun
 - A crawl that exhausts its page budget with pending URLs is `partial`, not `complete` or
   indefinitely `running`.
 
-## Non-goals for v0.1
+## Non-goals for 1.x
 
 - Universal website coverage or CAPTCHA bypass.
 - Login, form submission, purchasing, posting, or other state-changing browser actions.

@@ -89,7 +89,7 @@ def test_bounded_same_origin_crawl_writes_verifiable_state(
     calls = install_fake_fetch(
         monkeypatch,
         {
-            ROOT: [child, "https://other.test/outside", "mailto:test@example.test"],
+            ROOT: [child, "https://other.test/outside", "mailto:fixture"],
             child: [],
         },
     )
