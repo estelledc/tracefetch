@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, ProcessingInstruction, Tag
 from markdownify import markdownify
 
 from tracefetch.adapters.base import ReaderResult
@@ -116,6 +116,8 @@ def _normalize_html(body: bytes, base_url: str) -> NormalizedDocument:
     title = soup.title.get_text(" ", strip=True) if soup.title else None
     for element in soup(["script", "style", "noscript", "template", "svg"]):
         element.decompose()
+    for instruction in soup.find_all(string=lambda node: isinstance(node, ProcessingInstruction)):
+        instruction.extract()
     candidate = soup.find("main") or soup.find("article") or soup.body or soup
     if isinstance(candidate, Tag) and len(candidate.get_text(" ", strip=True)) < 160 and soup.body:
         candidate = soup.body
@@ -125,7 +127,7 @@ def _normalize_html(body: bytes, base_url: str) -> NormalizedDocument:
         href = urljoin(base_url, str(anchor.get("href")))
         text = anchor.get_text(" ", strip=True)
         key = (text, href)
-        if href.startswith(("http://", "https://")) and key not in seen:
+        if text and href.startswith(("http://", "https://")) and key not in seen:
             seen.add(key)
             links.append(LinkRecord(text=text, url=href))
     markdown = markdownify(str(candidate), heading_style="ATX", bullets="-")

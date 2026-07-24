@@ -54,7 +54,13 @@ def search_sources(
             continue
         try:
             candidates = adapter.search(query, limit)
-            attempts.append(SearchAttempt(provider=name, status="success"))
+            attempts.append(
+                SearchAttempt(
+                    provider=name,
+                    status="success",
+                    candidate_count=len(candidates),
+                )
+            )
             provider_results.append(candidates)
         except TraceFetchError as exc:
             last_error = exc

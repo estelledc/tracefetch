@@ -44,6 +44,10 @@ class FetchFailedError(TraceFetchError):
     retryable = True
 
 
+class RateLimitedError(FetchFailedError):
+    code = "rate_limited"
+
+
 class VerificationError(TraceFetchError):
     code = "verification_failed"
     exit_code = 6

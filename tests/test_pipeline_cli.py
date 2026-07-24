@@ -60,6 +60,31 @@ def test_html_normalization_removes_active_content_and_resolves_links() -> None:
     assert document.method == "builtin:html"
 
 
+def test_html_normalization_removes_embedded_xml_permalink_noise() -> None:
+    document = normalize_result(
+        result(
+            b"""
+            <html><body><main>
+            <h2 id="overview">Overview
+              <a title="Permalink for Overview section" href="#overview">
+                <?xml version="1.0" encoding="utf-8"?>
+                <svg aria-hidden="true"><path d="M0 0"/></svg>
+              </a>
+            </h2>
+            <p>Readable documentation content that is deliberately long enough
+            for main-content selection to retain this fixture as the candidate.</p>
+            </main></body></html>
+            """,
+            "text/html; charset=utf-8",
+        )
+    )
+
+    assert "## Overview" in document.markdown
+    assert "xml version" not in document.markdown
+    assert "Permalink for Overview" not in document.markdown
+    assert document.links == []
+
+
 def test_provided_markdown_records_when_origin_bytes_are_not_preserved() -> None:
     document = normalize_result(
         result(

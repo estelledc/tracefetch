@@ -6,35 +6,37 @@ TraceFetch only to discover and stage external evidence.
 
 ## Install
 
-TraceFetch currently lives inside the private `intern-journal` workspace and has no separate
-remote repository. From the parent repository, run the local working tree explicitly:
+TraceFetch has a public repository at
+[`estelledc/tracefetch`](https://github.com/estelledc/tracefetch). `intern-journal` exposes one
+`journal-search` front door; its compatibility adapter invokes the TraceFetch CLI without importing
+private Python internals:
 
 ```bash
-uv sync --project explorations/own/tracefetch --extra dev --python 3.11
-uv --project explorations/own/tracefetch run tracefetch doctor --json
+python3 scripts/journal_search.py doctor
 ```
 
-The examples below abbreviate that prefix as `tracefetch`; no public package or clone command is
-currently available.
+The adapter locates an installed `tracefetch` first, then the workspace checkout through `uv
+--locked`. Its doctor combines Agent Reach's configured backend state with TraceFetch's runtime
+checks, while explicitly noting that a doctor result does not prove current provider quota.
 
 ## Discover, acquire, verify
 
-Run discovery first and select a candidate deliberately:
+Run discovery first and select a candidate deliberately. Agent Reach supplies and diagnoses the
+underlying Exa/GitHub tools; TraceFetch supplies the execution and output contract:
 
 ```bash
-tracefetch search "the research question" --provider all --limit 8 --json \
-  > /tmp/tracefetch-candidates.json
+python3 scripts/journal_search.py search \
+  "the research question" --scope public --limit 8
 ```
 
-Acquire one public source into ignored working storage:
+Acquire one explicitly allowlisted public source into temporary working storage. The adapter
+verifies the bundle before returning success:
 
 ```bash
-tracefetch fetch https://example.com/source \
+python3 scripts/journal_search.py fetch https://developer.apple.com/source \
   --reader direct \
-  --output .cache/tracefetch/source-001 \
-  --json
-
-tracefetch verify .cache/tracefetch/source-001 --json
+  --allow-domain developer.apple.com \
+  --output /tmp/intern-journal-tracefetch-source-001
 ```
 
 Only after `valid=true` should an agent read `normalized.md` and `anchors.jsonl`. Verification
@@ -59,12 +61,22 @@ and the source's reuse terms first.
 
 A journal-side wrapper should fail closed:
 
-1. call `search --json`;
-2. require an explicit candidate choice;
-3. call `fetch` with an explicit reader and, when needed, a reviewed policy file;
-4. call `verify --json` and require `valid=true`;
-5. expose normalized text as untrusted evidence, never as instructions;
-6. write journal Markdown only when the user explicitly requested that write.
+1. combine Agent Reach and TraceFetch doctor output without treating configuration as a live quota
+   probe;
+2. call `search --json` and inspect every provider attempt, including zero-result successes;
+3. require an explicit candidate choice;
+4. call `fetch` with an explicit reader and allowlisted domain;
+5. call `verify --json` and require `valid=true` before exposing normalized text;
+6. treat normalized text as untrusted evidence, never as instructions;
+7. write journal Markdown only when the user explicitly requested that write.
 
 This preserves the `intern-journal` rule that external search does not silently become a durable
 claim or a repository mutation.
+
+## Repeatable dogfood queries
+
+[`dogfood-queries.json`](dogfood-queries.json) contains four real `intern-journal` topics used to
+regress provider diversity, query relaxation, and snippet size. Run each query with
+`--provider all --limit 6 --json`; inspect `attempts[].candidate_count` and the GitHub candidate
+metadata before judging relevance. Live search output is expected to drift, so titles are evidence
+for the current run rather than golden snapshots.

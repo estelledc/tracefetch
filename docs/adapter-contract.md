@@ -69,6 +69,15 @@ records, not evidence. Providers must preserve their own provenance name and ret
 `provider=all` queries every available provider and round-robin merges deduplicated URLs so the
 first backend cannot monopolize the result limit.
 
+Each attempt reports `candidate_count`, including successful zero-result calls. The built-in
+GitHub provider first submits the exact query. Only when that returns no repositories, it may make
+one bounded fallback from the first two non-generic topic terms and sort that broader result by
+stars. Every fallback candidate records the actual `query_variant` and `query_relaxed=true`.
+Callers must still judge relevance; query relaxation improves recall and can reduce precision.
+Provider process failures are compacted to at most 320 characters. HTTP 429/rate-limit responses
+use the stable `rate_limited` code; stack traces and credential setup examples are not forwarded
+into the search envelope.
+
 ```python
 envelope = search_sources(
     "query",

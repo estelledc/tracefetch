@@ -111,6 +111,7 @@ class SearchCandidate(StrictModel):
 class SearchAttempt(StrictModel):
     provider: str
     status: Literal["success", "failed", "skipped"]
+    candidate_count: int = Field(default=0, ge=0)
     code: str | None = None
     message: str | None = None
 

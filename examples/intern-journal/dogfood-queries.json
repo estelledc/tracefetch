@@ -1,0 +1,22 @@
+[
+  {
+    "id": "source-provenance",
+    "purpose": "AI source acquisition and evidence boundaries",
+    "query": "web crawler provenance"
+  },
+  {
+    "id": "uikit-lifecycle",
+    "purpose": "UIKit lifecycle learning and list refresh behavior",
+    "query": "UIViewController lifecycle viewWillAppear refresh"
+  },
+  {
+    "id": "swift-concurrency",
+    "purpose": "Swift actor isolation and Sendable learning",
+    "query": "Swift concurrency MainActor Sendable actor isolation"
+  },
+  {
+    "id": "agent-browser-evidence",
+    "purpose": "Browser and device automation evidence protocols",
+    "query": "AI browser device automation evidence protocol"
+  }
+]

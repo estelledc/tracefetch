@@ -36,6 +36,14 @@ uv run tracefetch search "evidence provenance crawler" --provider all --limit 5 
 
 Search only discovers candidates. It does not mark a result trustworthy.
 
+`provider=all` reports each provider's `candidate_count` and round-robin merges results. When a
+long GitHub repository query returns zero candidates, TraceFetch makes at most one transparent,
+two-topic fallback query; GitHub candidates record `query_variant` and `query_relaxed`. Exa
+highlight snippets are compacted to 1,200 characters and carry an explicit truncation marker.
+
+See the [intern-journal dogfood report](docs/intern-journal-dogfood.md) for a real before/after
+iteration using four project topics.
+
 ## Fetch and verify
 
 ```bash
@@ -141,17 +149,23 @@ TraceFetch communicates through JSON and portable bundle files rather than Pytho
 [the intern-journal integration](examples/intern-journal/README.md) and the
 [adapter contract](docs/adapter-contract.md).
 
+Agent Reach remains the installer, platform router, and backend doctor; it intentionally has no
+search execution command. A consumer can layer TraceFetch over the Exa and GitHub tools configured
+by Agent Reach to gain multi-provider attempts, bounded diagnostics, normalized evidence, and
+verification without modifying Agent Reach internals.
+
 The [architecture](docs/architecture.md) explains the trust layers. The
 [source research](docs/source-research.md) records which ideas were adopted, deferred, or rejected.
 
 ## Status
 
-`0.1.0` is a local alpha, not a published package or public repository. The direct reader, local
-ingestion, evidence contract, verifier, search adapters, and bounded crawl have 87 offline tests,
-an 80% coverage gate, schema drift checks, Ruff, strict mypy and wheel/sdist gates. Browser/device
-adapters are contract-level
-extension points, not bundled automation. No production reliability, standards certification,
-security certification or universal website coverage is claimed.
+`0.1.0` is a public-source alpha at
+[estelledc/tracefetch](https://github.com/estelledc/tracefetch), not a published package. The direct
+reader, local ingestion, evidence contract, verifier, search adapters, and bounded crawl have 90+
+offline tests, an 80% coverage gate, schema drift checks, Ruff, strict mypy and wheel/sdist gates.
+Browser/device adapters are contract-level extension points, not bundled automation. No production
+reliability, standards certification, security certification or universal website coverage is
+claimed.
 
 ## License
 

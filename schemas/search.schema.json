@@ -3,6 +3,12 @@
     "SearchAttempt": {
       "additionalProperties": false,
       "properties": {
+        "candidate_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Candidate Count",
+          "type": "integer"
+        },
         "code": {
           "anyOf": [
             {
