@@ -87,10 +87,14 @@ envelope = search_sources(
 )
 ```
 
+The Python adapter API remains the low-level 0.1 compatibility surface. The 1.0 CLI uses
+`tracefetch.search-results.v1` and adds local scopes plus explicit process providers. See the
+[command provider protocol](provider-protocol.md) for the portable extension boundary.
+
 ## Browser and device adapters
 
 A future browser or Android adapter should be a separate process with an allowlisted executable,
 explicit profile/device selection, read-only navigation by default, output byte caps, and an audit
 record of every navigation. A screenshot or accessibility dump is an adapter artifact, not proof
 of source truth. Login, clicks, forms, uploads, posting, purchases, and CAPTCHA handling require a
-different state-changing authorization contract and are outside v0.1.
+different state-changing authorization contract and are outside TraceFetch 1.x.

@@ -14,6 +14,7 @@ def search_sources(
     provider: str,
     limit: int,
     adapters: Mapping[str, SearchProvider] | None = None,
+    fail_if_all: bool = True,
 ) -> SearchEnvelope:
     query = query.strip()
     if not query:
@@ -77,6 +78,7 @@ def search_sources(
     collected = _round_robin(provider_results, limit)
     if (
         not collected
+        and fail_if_all
         and last_error is not None
         and all(attempt.status != "success" for attempt in attempts)
     ):

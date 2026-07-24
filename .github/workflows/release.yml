@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - name: Install locked dependencies
+        run: uv sync --extra dev --frozen
+      - name: Run release gates
+        run: make check
+      - name: Verify tag and package version
+        run: uv run --locked python scripts/check_version.py --tag "$GITHUB_REF_NAME"
+      - name: Build release artifacts
+        run: uv build
+      - name: Smoke-test the wheel
+        run: |
+          uv venv /tmp/tracefetch-release --python 3.11
+          uv pip install --python /tmp/tracefetch-release/bin/python dist/tracefetch-*.whl
+          /tmp/tracefetch-release/bin/tracefetch --version
+          /tmp/tracefetch-release/bin/tracefetch search "TraceFetch provider" --root . --limit 1 > /tmp/search.json
+          /tmp/tracefetch-release/bin/python -c 'import json; assert json.load(open("/tmp/search.json"))["schema_version"] == "tracefetch.search-results.v1"'
+      - name: Publish immutable GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/tracefetch-*.whl \
+            dist/tracefetch-*.tar.gz \
+            --verify-tag \
+            --generate-notes \
+            --title "TraceFetch $GITHUB_REF_NAME"

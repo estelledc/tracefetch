@@ -1,0 +1,2 @@
+# Generated dependency data is validated by uv and excluded from content/sensitive-text search.
+uv.lock

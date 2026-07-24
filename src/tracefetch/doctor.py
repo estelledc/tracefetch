@@ -1,16 +1,22 @@
 from __future__ import annotations
 
-import importlib.util
 import os
 import shutil
 import sys
+from pathlib import Path
 
-from tracefetch.adapters.search import ExaSearchProvider, GitHubSearchProvider
-from tracefetch.contracts import DoctorCheck, DoctorEnvelope
+from tracefetch.contracts import DoctorCheck, DoctorEnvelope, ProviderManifest
+from tracefetch.providers import provider_availability
 
 
-def run_doctor() -> DoctorEnvelope:
-    crawl4ai_present = importlib.util.find_spec("crawl4ai") is not None
+def run_doctor(
+    *,
+    provider_manifest: ProviderManifest | None = None,
+    provider_base_dir: Path | None = None,
+    root: Path | None = None,
+) -> DoctorEnvelope:
+    workspace = (root or Path.cwd()).expanduser().resolve()
+    rg = shutil.which("rg")
     checks = [
         DoctorCheck(
             name="python",
@@ -22,7 +28,16 @@ def run_doctor() -> DoctorEnvelope:
         _command_check("mcporter", "exa-search"),
         _command_check("markitdown", "document-normalization"),
         _command_check("agent-reach", "platform-routing"),
-        _command_check("scrcpy", "android-capture"),
+        DoctorCheck(
+            name="workspace",
+            status="ok" if workspace.is_dir() else "off",
+            detail=(
+                f"ready via {Path(rg).name if rg else 'bounded Python fallback'}"
+                if workspace.is_dir()
+                else "root is not a directory"
+            ),
+            capability="local-search",
+        ),
         DoctorCheck(
             name="firecrawl",
             status="ok" if os.environ.get("FIRECRAWL_API_KEY") else "off",
@@ -33,15 +48,18 @@ def run_doctor() -> DoctorEnvelope:
             ),
             capability="remote-rendered-reader",
         ),
-        DoctorCheck(
-            name="crawl4ai",
-            status="ok" if crawl4ai_present else "off",
-            detail="Python package available" if crawl4ai_present else "not installed",
-            capability="local-rendered-reader-adapter-candidate",
-        ),
     ]
-    ExaSearchProvider().available()
-    GitHubSearchProvider().available()
+    base_dir = (provider_base_dir or Path.cwd()).resolve()
+    for spec in (provider_manifest or ProviderManifest()).providers:
+        available, backend = provider_availability(spec, base_dir=base_dir)
+        checks.append(
+            DoctorCheck(
+                name=f"provider:{spec.name}",
+                status="ok" if available else "off",
+                detail=backend,
+                capability=f"search-scope:{spec.scope}",
+            )
+        )
     return DoctorEnvelope(checks=checks)
 
 
@@ -50,6 +68,6 @@ def _command_check(command: str, capability: str) -> DoctorCheck:
     return DoctorCheck(
         name=command,
         status="ok" if path else "off",
-        detail=path or "not installed",
+        detail=Path(path).name if path else "not installed",
         capability=capability,
     )

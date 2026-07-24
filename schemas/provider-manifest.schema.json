@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "CommandProviderSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Command",
+          "type": "array"
+        },
+        "isolated": {
+          "default": false,
+          "title": "Isolated",
+          "type": "boolean"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "scope": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Scope",
+          "type": "string"
+        },
+        "sensitivity": {
+          "enum": [
+            "public",
+            "project",
+            "account-visible",
+            "internal"
+          ],
+          "title": "Sensitivity",
+          "type": "string"
+        },
+        "source_class": {
+          "default": "external-candidate",
+          "title": "Source Class",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60.0,
+          "exclusiveMinimum": 0,
+          "maximum": 300,
+          "title": "Timeout Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "scope",
+        "command",
+        "sensitivity"
+      ],
+      "title": "CommandProviderSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "providers": {
+      "items": {
+        "$ref": "#/$defs/CommandProviderSpec"
+      },
+      "title": "Providers",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "tracefetch.providers.v1",
+      "default": "tracefetch.providers.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "title": "ProviderManifest",
+  "type": "object"
+}

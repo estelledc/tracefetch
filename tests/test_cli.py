@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 
 from tracefetch.cli import main
-from tracefetch.contracts import SearchAttempt, SearchCandidate, SearchEnvelope
+from tracefetch.contracts import (
+    SearchResultAttempt,
+    SearchResultCandidate,
+    SearchResultsEnvelope,
+)
 
 
 def test_cli_ingest_and_verify_round_trip(
@@ -58,10 +62,44 @@ def test_cli_schema_and_doctor_emit_machine_readable_json(
     assert any(check["name"] == "python" for check in doctor["checks"])
 
 
-def test_cli_search_plain_output(
+def test_cli_search_defaults_to_json_and_pretty_is_explicit(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    envelope = SearchResultsEnvelope(
+        query="query",
+        scopes=["public"],
+        sensitivity="public-or-project",
+        candidates=[
+            SearchResultCandidate(
+                rank=1,
+                title="Candidate",
+                locator="https://example.com/",
+                provider="fixture",
+                scope="public",
+                source_class="web-candidate",
+                evidence_state="candidate-only",
+                sensitivity="public",
+            )
+        ],
+        attempts=[SearchResultAttempt(provider="fixture", scope="public", status="success")],
+    )
+    monkeypatch.setattr("tracefetch.cli.search_everywhere", lambda *args, **kwargs: envelope)
+
+    main(["search", "query"])
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == "tracefetch.search-results.v1"
+
+    main(["search", "query", "--format", "pretty"])
+    assert "1. [public/fixture] Candidate" in capsys.readouterr().out
+
+
+def test_cli_keeps_explicit_provider_as_legacy_compatibility_mode(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from tracefetch.contracts import SearchAttempt, SearchCandidate, SearchEnvelope
+
     envelope = SearchEnvelope(
         query="query",
         candidates=[
@@ -76,9 +114,10 @@ def test_cli_search_plain_output(
     )
     monkeypatch.setattr("tracefetch.cli.search_sources", lambda *args, **kwargs: envelope)
 
-    main(["search", "query"])
+    main(["search", "query", "--provider", "all", "--json"])
 
-    assert "1. Candidate" in capsys.readouterr().out
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == "tracefetch.search.v1"
 
 
 @pytest.mark.parametrize(("raw", "message"), [("0", "greater"), ("-1", "greater")])
@@ -88,4 +127,6 @@ def test_cli_rejects_nonpositive_limits(
     with pytest.raises(SystemExit) as exit_info:
         main(["search", "query", "--limit", raw])
     assert exit_info.value.code == 2
-    assert message in capsys.readouterr().err
+    error = json.loads(capsys.readouterr().err)
+    assert error["error"] == "invalid_input"
+    assert message in error["message"]

@@ -1,0 +1,14 @@
+{
+  "schema_version": "tracefetch.providers.v1",
+  "providers": [
+    {
+      "name": "demo",
+      "scope": "demo",
+      "command": ["./demo-provider.py"],
+      "timeout_seconds": 10,
+      "sensitivity": "public",
+      "source_class": "demo-candidate",
+      "isolated": false
+    }
+  ]
+}

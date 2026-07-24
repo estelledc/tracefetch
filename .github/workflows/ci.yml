@@ -31,3 +31,10 @@ jobs:
         run: uv sync --extra dev --frozen
       - name: Run quality gates
         run: make check
+      - name: Run installed product smoke
+        run: |
+          uv run --locked tracefetch --version
+          uv run --locked tracefetch search "TraceFetch provider" --root . --limit 1 > /tmp/search.json
+          python -c 'import json; assert json.load(open("/tmp/search.json"))["schema_version"] == "tracefetch.search-results.v1"'
+          uv run --locked tracefetch doctor > /tmp/doctor.json
+          python -c 'import json; assert json.load(open("/tmp/doctor.json"))["schema_version"] == "tracefetch.doctor.v1"'

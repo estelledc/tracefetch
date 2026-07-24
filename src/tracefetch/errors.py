@@ -48,6 +48,17 @@ class RateLimitedError(FetchFailedError):
     code = "rate_limited"
 
 
+class SearchFailedError(TraceFetchError):
+    code = "search_failed"
+    exit_code = 5
+    retryable = True
+
+
+class ProviderProtocolError(SearchFailedError):
+    code = "provider_protocol_error"
+    retryable = False
+
+
 class VerificationError(TraceFetchError):
     code = "verification_failed"
     exit_code = 6

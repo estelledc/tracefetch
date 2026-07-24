@@ -1,6 +1,6 @@
-.PHONY: build check format-check lint schema-check schemas test type
+.PHONY: build check format-check lint schema-check schemas test type version-check
 
-check: format-check lint type schema-check test build
+check: format-check lint type schema-check version-check test build
 
 format-check:
 	uv lock --check
@@ -17,6 +17,9 @@ schemas:
 
 schema-check:
 	uv run --locked python scripts/generate_schemas.py --check
+
+version-check:
+	uv run --locked python scripts/check_version.py
 
 test:
 	uv run --locked pytest --cov=tracefetch --cov-report=term --cov-fail-under=80

@@ -13,7 +13,7 @@ class Policy(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    user_agent: str = "TraceFetch/0.1"
+    user_agent: str = "TraceFetch/1.0"
     timeout_seconds: float = Field(default=20.0, gt=0, le=120)
     max_bytes: int = Field(default=5_000_000, ge=1_024, le=50_000_000)
     max_redirects: int = Field(default=5, ge=0, le=10)

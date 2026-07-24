@@ -53,6 +53,12 @@ MarkItDown and future browser/device adapters invoke complex parsers or external
 with least privilege, no unrelated secrets, resource limits, patched dependencies, and isolated
 temporary storage. TraceFetch's timeout is not a complete sandbox.
 
+Command search providers are explicitly trusted local executables. TraceFetch invokes fixed argv
+without a shell, sends one bounded JSON request, validates one bounded response, redacts diagnostic
+text, and drops secret-like metadata keys. It does not sandbox the process, prevent filesystem or
+network access, or remove the caller's authenticated CLI state. Review every manifest before use;
+internal providers must remain isolated from public scopes.
+
 HTTPX documents that redirects are disabled by default and that streaming keeps response I/O
 inside an explicit context. TraceFetch uses both properties, but HTTPX itself is not an SSRF
 sandbox: [clients](https://www.python-httpx.org/advanced/clients/) and
@@ -82,9 +88,10 @@ Domain policy is not a substitute for network egress controls. Keep both.
 
 ## Reporting
 
-This project currently lives only in a private parent repository. Do not copy a vulnerability into
-public logs or issues. Report credential, local-file, private-network, or path-handling findings to
-the repository owner through the existing authenticated collaboration channel.
+TraceFetch is public, but vulnerabilities and live exploit details still belong in
+[GitHub private vulnerability reporting](https://github.com/estelledc/tracefetch/security/advisories/new),
+not public issues or logs. Never attach credentials, private URLs, proprietary source text, or
+account-visible provider output to a report.
 
 ## Verification boundary
 

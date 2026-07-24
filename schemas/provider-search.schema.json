@@ -1,20 +1,8 @@
 {
   "$defs": {
-    "SearchResultAttempt": {
+    "SearchAttempt": {
       "additionalProperties": false,
       "properties": {
-        "backend": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Backend"
-        },
         "candidate_count": {
           "default": 0,
           "minimum": 0,
@@ -45,17 +33,8 @@
           "default": null,
           "title": "Message"
         },
-        "metadata": {
-          "additionalProperties": true,
-          "title": "Metadata",
-          "type": "object"
-        },
         "provider": {
           "title": "Provider",
-          "type": "string"
-        },
-        "scope": {
-          "title": "Scope",
           "type": "string"
         },
         "status": {
@@ -70,29 +49,14 @@
       },
       "required": [
         "provider",
-        "scope",
         "status"
       ],
-      "title": "SearchResultAttempt",
+      "title": "SearchAttempt",
       "type": "object"
     },
-    "SearchResultCandidate": {
+    "SearchCandidate": {
       "additionalProperties": false,
-      "description": "One bounded candidate from a local, public, or explicit plugin scope.",
       "properties": {
-        "evidence_state": {
-          "enum": [
-            "local-source-match",
-            "candidate-only",
-            "candidate-only-internal"
-          ],
-          "title": "Evidence State",
-          "type": "string"
-        },
-        "locator": {
-          "title": "Locator",
-          "type": "string"
-        },
         "metadata": {
           "additionalProperties": true,
           "title": "Metadata",
@@ -119,54 +83,35 @@
           "title": "Rank",
           "type": "integer"
         },
-        "scope": {
-          "title": "Scope",
-          "type": "string"
-        },
-        "sensitivity": {
-          "enum": [
-            "public",
-            "project",
-            "account-visible",
-            "internal"
-          ],
-          "title": "Sensitivity",
-          "type": "string"
-        },
         "snippet": {
           "default": "",
           "title": "Snippet",
           "type": "string"
         },
-        "source_class": {
-          "title": "Source Class",
-          "type": "string"
-        },
         "title": {
           "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
           "type": "string"
         }
       },
       "required": [
         "rank",
         "title",
-        "locator",
-        "provider",
-        "scope",
-        "source_class",
-        "evidence_state",
-        "sensitivity"
+        "url",
+        "provider"
       ],
-      "title": "SearchResultCandidate",
+      "title": "SearchCandidate",
       "type": "object"
     }
   },
   "additionalProperties": false,
-  "description": "Stable agent-facing search result contract introduced in TraceFetch 1.0.",
   "properties": {
     "attempts": {
       "items": {
-        "$ref": "#/$defs/SearchResultAttempt"
+        "$ref": "#/$defs/SearchAttempt"
       },
       "minItems": 1,
       "title": "Attempts",
@@ -174,7 +119,7 @@
     },
     "candidates": {
       "items": {
-        "$ref": "#/$defs/SearchResultCandidate"
+        "$ref": "#/$defs/SearchCandidate"
       },
       "title": "Candidates",
       "type": "array"
@@ -189,43 +134,17 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "tracefetch.search-results.v1",
-      "default": "tracefetch.search-results.v1",
+      "const": "tracefetch.search.v1",
+      "default": "tracefetch.search.v1",
       "title": "Schema Version",
       "type": "string"
-    },
-    "scopes": {
-      "items": {
-        "type": "string"
-      },
-      "minItems": 1,
-      "title": "Scopes",
-      "type": "array"
-    },
-    "sensitivity": {
-      "enum": [
-        "public-or-project",
-        "account-visible",
-        "internal"
-      ],
-      "title": "Sensitivity",
-      "type": "string"
-    },
-    "warnings": {
-      "items": {
-        "type": "string"
-      },
-      "title": "Warnings",
-      "type": "array"
     }
   },
   "required": [
     "query",
-    "scopes",
-    "sensitivity",
     "candidates",
     "attempts"
   ],
-  "title": "SearchResultsEnvelope",
+  "title": "SearchEnvelope",
   "type": "object"
 }
