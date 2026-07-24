@@ -1,0 +1,403 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "media_type": {
+          "title": "Media Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "raw",
+            "normalized",
+            "anchors",
+            "links",
+            "crawl_state"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "path",
+        "media_type",
+        "sha256",
+        "bytes"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "Attempt": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "title": "Adapter",
+          "type": "string"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "title": "Completed At",
+          "type": "string"
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Http Status"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "success",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "adapter",
+        "status",
+        "started_at",
+        "completed_at"
+      ],
+      "title": "Attempt",
+      "type": "object"
+    },
+    "PolicyRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "authenticated_adapter_used": {
+          "title": "Authenticated Adapter Used",
+          "type": "boolean"
+        },
+        "license_status": {
+          "default": "needs_review",
+          "enum": [
+            "needs_review",
+            "allowed",
+            "restricted",
+            "rejected"
+          ],
+          "title": "License Status",
+          "type": "string"
+        },
+        "private_networks_denied": {
+          "title": "Private Networks Denied",
+          "type": "boolean"
+        },
+        "remote_adapter_used": {
+          "title": "Remote Adapter Used",
+          "type": "boolean"
+        },
+        "robots_status": {
+          "enum": [
+            "allowed",
+            "blocked",
+            "unavailable",
+            "unchecked"
+          ],
+          "title": "Robots Status",
+          "type": "string"
+        },
+        "terms_status": {
+          "default": "not_assessed",
+          "enum": [
+            "not_assessed",
+            "reviewed"
+          ],
+          "title": "Terms Status",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "robots_status",
+        "private_networks_denied",
+        "remote_adapter_used",
+        "authenticated_adapter_used"
+      ],
+      "title": "PolicyRecord",
+      "type": "object"
+    },
+    "QualityRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor_count": {
+          "minimum": 0,
+          "title": "Anchor Count",
+          "type": "integer"
+        },
+        "link_count": {
+          "minimum": 0,
+          "title": "Link Count",
+          "type": "integer"
+        },
+        "normalized_chars": {
+          "minimum": 0,
+          "title": "Normalized Chars",
+          "type": "integer"
+        },
+        "thin_content": {
+          "default": false,
+          "title": "Thin Content",
+          "type": "boolean"
+        },
+        "truncated": {
+          "default": false,
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "normalized_chars",
+        "anchor_count",
+        "link_count"
+      ],
+      "title": "QualityRecord",
+      "type": "object"
+    },
+    "SourceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "content_type": {
+          "title": "Content Type",
+          "type": "string"
+        },
+        "fetched_at": {
+          "format": "date-time",
+          "title": "Fetched At",
+          "type": "string"
+        },
+        "final_url": {
+          "title": "Final Url",
+          "type": "string"
+        },
+        "normalized_url": {
+          "title": "Normalized Url",
+          "type": "string"
+        },
+        "requested_url": {
+          "title": "Requested Url",
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Sha256",
+          "type": "string"
+        },
+        "status_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status Code"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        }
+      },
+      "required": [
+        "requested_url",
+        "normalized_url",
+        "final_url",
+        "fetched_at",
+        "content_type",
+        "bytes",
+        "source_sha256"
+      ],
+      "title": "SourceRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "minItems": 1,
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "attempts": {
+      "items": {
+        "$ref": "#/$defs/Attempt"
+      },
+      "minItems": 1,
+      "title": "Attempts",
+      "type": "array"
+    },
+    "attested": {
+      "const": false,
+      "default": false,
+      "title": "Attested",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "independent_execution_proven": {
+      "const": false,
+      "default": false,
+      "title": "Independent Execution Proven",
+      "type": "boolean"
+    },
+    "policy": {
+      "$ref": "#/$defs/PolicyRecord"
+    },
+    "quality": {
+      "$ref": "#/$defs/QualityRecord"
+    },
+    "receipt_id": {
+      "pattern": "^tf_[a-f0-9]{16}_[0-9]{8}T[0-9]{6}Z$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_kind": {
+      "const": "unsigned-self-reported-diagnostic",
+      "default": "unsigned-self-reported-diagnostic",
+      "title": "Receipt Kind",
+      "type": "string"
+    },
+    "route": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Route",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "tracefetch.evidence-receipt.v1",
+      "default": "tracefetch.evidence-receipt.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceRecord"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "trusted_clock": {
+      "const": false,
+      "default": false,
+      "title": "Trusted Clock",
+      "type": "boolean"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "status",
+    "source",
+    "route",
+    "attempts",
+    "artifacts",
+    "policy",
+    "quality"
+  ],
+  "title": "EvidenceReceipt",
+  "type": "object"
+}

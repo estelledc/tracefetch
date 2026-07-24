@@ -1,0 +1,11 @@
+{
+  "allow_authenticated_adapters": false,
+  "allow_remote_adapters": false,
+  "deny_private_networks": true,
+  "max_bytes": 5000000,
+  "max_depth": 1,
+  "max_pages": 20,
+  "min_interval_seconds": 1.0,
+  "obey_robots": true,
+  "robots_fail_closed": true
+}

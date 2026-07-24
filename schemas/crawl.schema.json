@@ -1,0 +1,189 @@
+{
+  "$defs": {
+    "CrawlPage": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Path"
+        },
+        "depth": {
+          "minimum": 0,
+          "title": "Depth",
+          "type": "integer"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "failed",
+            "blocked",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "depth",
+        "status"
+      ],
+      "title": "CrawlPage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "attested": {
+      "const": false,
+      "default": false,
+      "title": "Attested",
+      "type": "boolean"
+    },
+    "crawl_id": {
+      "title": "Crawl Id",
+      "type": "string"
+    },
+    "crawl_state_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Crawl State Sha256",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "failures_by_code": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Failures By Code",
+      "type": "object"
+    },
+    "independent_execution_proven": {
+      "const": false,
+      "default": false,
+      "title": "Independent Execution Proven",
+      "type": "boolean"
+    },
+    "max_depth": {
+      "title": "Max Depth",
+      "type": "integer"
+    },
+    "max_pages": {
+      "title": "Max Pages",
+      "type": "integer"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/CrawlPage"
+      },
+      "title": "Pages",
+      "type": "array"
+    },
+    "policy_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Policy Sha256",
+      "type": "string"
+    },
+    "reader": {
+      "enum": [
+        "auto",
+        "direct",
+        "jina",
+        "firecrawl"
+      ],
+      "title": "Reader",
+      "type": "string"
+    },
+    "receipt_kind": {
+      "const": "unsigned-self-reported-diagnostic",
+      "default": "unsigned-self-reported-diagnostic",
+      "title": "Receipt Kind",
+      "type": "string"
+    },
+    "root_url": {
+      "title": "Root Url",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "tracefetch.crawl-receipt.v1",
+      "default": "tracefetch.crawl-receipt.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "running",
+        "complete",
+        "partial",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "trusted_clock": {
+      "const": false,
+      "default": false,
+      "title": "Trusted Clock",
+      "type": "boolean"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "crawl_id",
+    "root_url",
+    "reader",
+    "policy_sha256",
+    "crawl_state_sha256",
+    "created_at",
+    "updated_at",
+    "status",
+    "max_pages",
+    "max_depth",
+    "pages"
+  ],
+  "title": "CrawlReceipt",
+  "type": "object"
+}
