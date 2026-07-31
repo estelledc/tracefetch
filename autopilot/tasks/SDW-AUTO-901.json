@@ -7,13 +7,14 @@
     "patchSha256": null,
     "patchBytes": null
   },
-  "objective": "Make `verify_crawl_bundle` reject a crawl receipt whose top-level `status` differs from the deterministic status derived by `_receipt_from_store` from `pages` and `max_pages`. Preserve all valid crawl receipts, reuse the producer's exact precedence for pending, complete, failed, and blocked page combinations, and add a regression that changes only a valid complete receipt's top-level status to `failed` and proves verification rejects it with a stable, specific failure.",
+  "objective": "Make `verify_crawl_bundle` reject a crawl receipt whose top-level `status` differs from the deterministic status derived by `_receipt_from_store` from `pages` and `max_pages`. Preserve all valid crawl receipts, reuse the producer's exact precedence for pending, complete, failed, and blocked page combinations, add a regression that changes only a valid complete receipt's top-level status to `failed` and proves verification rejects it with a stable, specific failure, and keep both changed files compliant with the repository's current Ruff formatting contract.",
   "problemEvidence": [
     "`_receipt_from_store` deterministically derives the top-level crawl status from page statuses, terminal page count, and max_pages.",
     "`verify_crawl_bundle` recomputes failures_by_code and validates the SQLite projection, but it never recomputes or compares the top-level crawl status.",
     "On source HEAD c57b1bcb788d6228bbade186667c3bed46ef1996, a valid one-page complete crawl remains `valid: true` after changing only `crawl-receipt.json.status` from `complete` to `failed`.",
     "The existing crawl test file passes before the fix, so the new regression must fail on the source behavior and pass only when the verifier enforces the producer's status contract.",
-    "The fix belongs in verification and its direct tests; changing crawl production, public models, build configuration, or schemas is outside this task."
+    "The fix belongs in verification and its direct tests; changing crawl production, public models, build configuration, or schemas is outside this task.",
+    "The first isolated candidate passed all 12 crawl tests and Ruff lint, but `ruff format --check` rejected its multiline `processed_count` sum; that candidate is not eligible for TaskSpec installation, and the replacement must satisfy the existing formatter without a later manual patch."
   ],
   "allowedPaths": [
     "src/tracefetch/verify.py",
