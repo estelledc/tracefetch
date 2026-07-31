@@ -9,6 +9,7 @@ import pytest
 
 from tracefetch.adapters.base import ReaderResult
 from tracefetch.bundle import BundleResult, write_bundle
+from tracefetch.cli import main
 from tracefetch.config import Policy
 from tracefetch.contracts import Attempt, LinkRecord
 from tracefetch.crawl import CrawlStore, crawl_site, policy_sha256
@@ -221,6 +222,97 @@ def test_crawl_sqlite_tamper_is_rejected(tmp_path: Path, monkeypatch: pytest.Mon
     failures = verify_crawl_bundle(output)
     assert "crawl state sha256 mismatch" in failures
     assert "crawl state metadata mismatch: max_depth" in failures
+
+
+@pytest.mark.parametrize(
+    ("contents", "failure"),
+    [
+        (b"{", "crawl receipt failed schema validation"),
+        (b"{}", "crawl receipt failed schema validation"),
+        (b"\xff", "crawl receipt is not valid UTF-8"),
+    ],
+)
+def test_crawl_payload_keeps_receipt_load_failures_inside_the_contract(
+    tmp_path: Path, contents: bytes, failure: str
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(contents)
+
+    assert crawl_verification_payload(output) == {
+        "schema_version": "tracefetch.crawl-verification.v1",
+        "crawl_id": "",
+        "valid": False,
+        "verified_pages": 0,
+        "failures": [failure],
+    }
+
+
+def test_crawl_receipt_symlink_is_a_fixed_unreadable_failure(tmp_path: Path) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    outside = tmp_path / "outside-receipt.json"
+    outside.write_text("{}", encoding="utf-8")
+    (output / "crawl-receipt.json").symlink_to(outside)
+
+    assert crawl_verification_payload(output)["failures"] == ["crawl receipt is unreadable"]
+
+
+@pytest.mark.parametrize("state_kind", ["missing", "corrupt", "symlink"])
+def test_valid_receipt_summary_survives_invalid_crawl_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    state_kind: str,
+) -> None:
+    output = tmp_path / "crawl"
+    install_fake_fetch(monkeypatch, {ROOT: []})
+    receipt = crawl_site(ROOT, output, reader="direct", policy=policy(), resume=False)
+    state_path = output / "crawl.sqlite3"
+    if state_kind == "missing":
+        state_path.unlink()
+    elif state_kind == "corrupt":
+        state_path.write_bytes(b"not a SQLite database")
+    else:
+        outside = tmp_path / "outside.sqlite3"
+        outside.write_bytes(state_path.read_bytes())
+        state_path.unlink()
+        state_path.symlink_to(outside)
+
+    payload = crawl_verification_payload(output)
+
+    assert payload["valid"] is False
+    assert payload["crawl_id"] == receipt.crawl_id
+    assert payload["verified_pages"] == 1
+    if state_kind == "symlink":
+        assert payload["failures"] == ["crawl receipt and state must not be symlinks"]
+
+
+def test_invalid_sqlite_row_is_fixed_for_payload_and_cli(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "crawl"
+    install_fake_fetch(monkeypatch, {ROOT: []})
+    receipt = crawl_site(ROOT, output, reader="direct", policy=policy(), resume=False)
+    connection = sqlite3.connect(output / "crawl.sqlite3")
+    connection.execute("update pages set depth = 'not-an-integer'")
+    connection.commit()
+    connection.close()
+
+    payload = crawl_verification_payload(output)
+    assert payload["crawl_id"] == receipt.crawl_id
+    assert payload["verified_pages"] == 1
+    assert payload["failures"][-1] == "crawl SQLite state is invalid"
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(["verify", str(output), "--json"])
+
+    captured = capsys.readouterr()
+    assert exit_info.value.code == 6
+    assert captured.out == ""
+    assert json.loads(captured.err)["details"]["failures"][-1] == "crawl SQLite state is invalid"
+    assert "Traceback" not in captured.err
 
 
 def test_failed_page_counts_are_recomputed_from_page_records(
