@@ -3,7 +3,7 @@
   "id": "SDW-AUTO-902",
   "status": "DRAFT",
   "execution": {
-    "kind": "codex-patch-intent-v1",
+    "kind": "bound-patch-intent-v1",
     "patchSha256": null,
     "patchBytes": null
   },
@@ -27,7 +27,8 @@
     "Transaction 94c87198-b226-4f21-a7dc-6d333bd0e194 fixed the formatter issue but left `_verify_crawl_state` row conversion outside its `sqlite3.Error` boundary. After updating `pages.depth` to the string `not-an-integer`, the public CLI still exited 1 with an uncaught `ValueError` traceback. That candidate was formally rejected as `corrupt-state-traceback`; regression coverage must tamper a schema-valid crawl SQLite row, assert the internal payload retains crawl ID and complete-page count with `crawl SQLite state is invalid`, and assert the CLI still exits 6 with one JSON error.",
     "Transaction 5b1625c6-77da-448e-94a5-d19d1e6da0ad implemented the SQLite conversion boundary and passed 28 focused tests, but Ruff rejected two multiline forms. The replacement must keep `assert json.loads(captured.err)[\"details\"][\"failures\"][-1] == (\"crawl SQLite state is invalid\")` on one line; that candidate was formally rejected as `ruff-format-contract-failed` and cannot be post-formatted or reused.",
     "Transaction 8c95c95c-3d1b-4509-8c0f-6f841a7c8afd covered the corrupt-row contract and passed 31 focused tests, but Ruff rejected an inline verified-pages conditional in the result dictionary; the replacement should compute a local `verified_pages` value before constructing the dictionary so the formatter owns layout. It also mapped a receipt symlink to the legacy combined symlink message instead of the required exact `crawl receipt is unreadable`. The candidate was formally rejected as `receipt-symlink-contract-mismatch` plus `ruff-format-contract-failed`.",
-    "After the seventh rejected batch, the operator paused new TraceFetch transactions and changed the source-owned controller instead of retrying the same producer contract. Pushed controller commit 69f75e573e5b077878152dae75f534ed1615c33d adds prompt contract v2, which requires the producer to run declared baseline checks before editing, rerun every baseline and acceptance recipe before finishing, and remove generated ignored artifacts. The new controller source set 843089a34bb3d0b3a5c2503538c5b02474e6e1b13d039638f57f47545d95f1f5 is a real workflow delta; it authorizes exactly one fresh bounded transaction, not an automatic retry loop."
+    "After the seventh rejected batch, the operator paused new TraceFetch transactions and changed the source-owned controller instead of retrying the same producer contract. Pushed controller commit 69f75e573e5b077878152dae75f534ed1615c33d adds prompt contract v2, which requires the producer to run declared baseline checks before editing, rerun every baseline and acceptance recipe before finishing, and remove generated ignored artifacts. The new controller source set 843089a34bb3d0b3a5c2503538c5b02474e6e1b13d039638f57f47545d95f1f5 is a real workflow delta; it authorizes exactly one fresh bounded transaction, not an automatic retry loop.",
+    "Transaction ac575b5c-4441-4f68-a037-c725097dba7f ran once under prompt contract v2 and returned `candidate-empty`; resume moved the persisted latch to terminal `PRODUCER_OUTCOME_UNKNOWN` without a second model invocation, candidate installation, product write, commit, or push. The operator therefore stopped producer retries and selected the source-owned manual prepared-patch path. The independently authored three-file patch is 11818 bytes with SHA-256 152fd43e9de0efdd87b9b8dc5fcfa154a4616e5f37cc444d4547247ff81edb08; it passed 31 focused tests and full `make check` with 121 tests and 82.74% coverage before binding."
   ],
   "allowedPaths": [
     "src/tracefetch/verify.py",
@@ -67,12 +68,12 @@
   },
   "authority": {
     "write": true,
-    "invokeAgent": true,
+    "invokeAgent": false,
     "applyPatch": false,
     "commit": false,
     "push": false,
     "release": false,
-    "network": true
+    "network": false
   },
   "externalOutcome": "An independent reviewer accepts a frozen candidate that converts malformed crawl-receipt verification into the documented JSON error and exit-6 contract while valid crawl and ordinary evidence verification remain unchanged; after the frozen lineage closes, the exact product commit is pushed on its lineage branch without claiming PR, merge, release, or production acceptance.",
   "stopConditions": [
