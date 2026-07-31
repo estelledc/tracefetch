@@ -1,11 +1,28 @@
 {
   "schemaVersion": "system-design-workbench.autopilot-task.v1",
   "id": "SDW-AUTO-902",
-  "status": "DRAFT",
+  "status": "READY",
   "execution": {
-    "kind": "bound-patch-intent-v1",
-    "patchSha256": null,
-    "patchBytes": null
+    "kind": "prepared-bound-patch-v1",
+    "patchSha256": "152fd43e9de0efdd87b9b8dc5fcfa154a4616e5f37cc444d4547247ff81edb08",
+    "patchBytes": 11818,
+    "preparation": {
+      "sourceHead": "cff9587db73c7a31d5e864b2792c6440b54af02f",
+      "project": {
+        "path": "autopilot/project.json",
+        "fileSha256": "4729153e18f731cc6c3f1450320eab479d44147140cdd9a1c63b7949b209e412",
+        "gitBlobOid": "e31b776e55cee1136758764ced3af1f60b6ff04b",
+        "canonicalSha256": "942ec6ad09ddc509953064ce3be3bea397c818875ad6138cefccf0de778b65d8"
+      },
+      "task": {
+        "path": "autopilot/tasks/SDW-AUTO-902.json",
+        "fileSha256": "417f5e634d62b8decbe2df0b911724ef032b8bd67aa863cecaef9de153647fad",
+        "gitBlobOid": "776e8857d300c2a7afa2d24b268a142c1e145eed",
+        "canonicalSha256": "e57c2d195c215a940ffa3be19ba92200000ab26993555fec563171d0e3e197a3"
+      },
+      "candidateSnapshotSha256": "cb7dc6e8f230db839bc2f58fa8dc1d114392afafe13d7a6f52870c66a31ef808",
+      "producer": null
+    }
   },
   "objective": "Make `tracefetch verify <crawl-directory>` preserve its JSON error contract for malformed crawl receipts and corrupted crawl state. Use one shared receipt parse result. Map malformed/schema-invalid JSON, invalid UTF-8, and unreadable receipts to the exact fixed failures `crawl receipt failed schema validation`, `crawl receipt is not valid UTF-8`, and `crawl receipt is unreadable` without reflecting load-boundary exception or input text. CLI failures must exit 6 with empty stdout and one `tracefetch.error.v1` stderr object; a 5000-page schema-invalid sentinel case must stay within 4096 bytes and not echo the sentinel. A successfully modeled receipt must retain its crawl ID and complete-page count when state is missing, corrupt, or a symlink. SQLite query and row-projection `sqlite3.Error`, `TypeError`, `ValueError`, or `OverflowError` must become `crawl SQLite state is invalid`, never a traceback. Preserve valid crawl payloads, ordinary evidence verification, and existing downstream page diagnostics. Fix the shared verification layer, keep all changed Python files Ruff-formatted, and leave no ignored producer artifact.",
   "problemEvidence": [
@@ -69,7 +86,7 @@
   "authority": {
     "write": true,
     "invokeAgent": false,
-    "applyPatch": false,
+    "applyPatch": true,
     "commit": false,
     "push": false,
     "release": false,
