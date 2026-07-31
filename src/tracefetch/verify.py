@@ -258,6 +258,20 @@ def verify_crawl_bundle(root_dir: Path) -> list[str]:
             failures.append(f"non-complete crawl page has bundle_path: {page.url}")
     if dict(sorted(failures_by_code.items())) != dict(sorted(receipt.failures_by_code.items())):
         failures.append("failures_by_code does not match page records")
+    statuses = Counter(page.status for page in receipt.pages)
+    processed_count = statuses["complete"] + statuses["failed"] + statuses["blocked"]
+    if statuses["pending"] and processed_count >= receipt.max_pages:
+        expected_status = "partial"
+    elif statuses["pending"]:
+        expected_status = "running"
+    elif statuses["complete"] and (statuses["failed"] or statuses["blocked"]):
+        expected_status = "partial"
+    elif statuses["complete"]:
+        expected_status = "complete"
+    else:
+        expected_status = "failed"
+    if receipt.status != expected_status:
+        failures.append("crawl status does not match page records")
     failures.extend(_verify_crawl_state(receipt, state_path))
     return failures
 

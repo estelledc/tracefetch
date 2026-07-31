@@ -234,3 +234,18 @@ def test_failed_page_counts_are_recomputed_from_page_records(
     receipt["failures_by_code"] = {"fabricated": 1}
     receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
     assert "failures_by_code does not match page records" in verify_crawl_bundle(output)
+
+
+def test_crawl_status_is_recomputed_from_page_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "crawl"
+    install_fake_fetch(monkeypatch, {ROOT: []})
+    receipt = crawl_site(ROOT, output, reader="direct", policy=policy(), resume=False)
+    assert receipt.status == "complete"
+    receipt_path = output / "crawl-receipt.json"
+    payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+    payload["status"] = "failed"
+    receipt_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert verify_crawl_bundle(output) == ["crawl status does not match page records"]
