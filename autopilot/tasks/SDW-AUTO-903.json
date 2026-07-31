@@ -1,11 +1,28 @@
 {
   "schemaVersion": "system-design-workbench.autopilot-task.v1",
   "id": "SDW-AUTO-903",
-  "status": "DRAFT",
+  "status": "READY",
   "execution": {
-    "kind": "bound-patch-intent-v1",
-    "patchSha256": null,
-    "patchBytes": null
+    "kind": "prepared-bound-patch-v1",
+    "patchSha256": "db891b31290487c4c84aa101517c5d3e4dc89a0926c6cfe5fe5956cbe162f980",
+    "patchBytes": 7991,
+    "preparation": {
+      "sourceHead": "e53c5db7ea0c25c71617e95dfacf89d052fead57",
+      "project": {
+        "path": "autopilot/project.json",
+        "fileSha256": "d2f1e89e8857477de0c0bc0ff146520929ef542ce8d60eb04deffecad2117ba4",
+        "gitBlobOid": "80388aaf9961622a139398df38326c39d1619b4f",
+        "canonicalSha256": "75ee3877eee92352025bd212299b68918be915999834e2407d2f2a2f1351d295"
+      },
+      "task": {
+        "path": "autopilot/tasks/SDW-AUTO-903.json",
+        "fileSha256": "c064da6df401043cf0218bf56ff3fe933bff6674023338caf241dccf52a1bcda",
+        "gitBlobOid": "787eb00ce96ad6c57e4de092fbef34bdeb0739ba",
+        "canonicalSha256": "d9c1638fe487f4a89123f9f0938701d103b26b8c4c9bc07cf647eccccb5561db"
+      },
+      "candidateSnapshotSha256": "7b95b0e62b766074ed49ef063aa620ce1ba3bb545197bb4c000f933706a8cc47",
+      "producer": null
+    }
   },
   "objective": "Add a bounded open-handle crawl-receipt read so `tracefetch verify <crawl-directory>` cannot allocate unbounded memory from `crawl-receipt.json` and cannot parse a locally replaced file. The shared verification layer must open the receipt with `O_NOFOLLOW`, keep one file descriptor, fstat before and after, read in bounded chunks with a short-read check, and require identical device, inode, and byte size. A receipt larger than 16 MiB maps to the exact fixed failure `crawl receipt exceeds the size limit`; a receipt that changes while being read maps to `crawl receipt changed during verification`; symlink, unreadable, invalid UTF-8, and schema-invalid receipts keep the existing exact messages `crawl receipt is unreadable`, `crawl receipt is not valid UTF-8`, and `crawl receipt failed schema validation` without reflecting exception text, receipt content, or local paths. CLI failures must exit 6 with empty stdout and one bounded `tracefetch.error.v1` stderr object under 4096 bytes. A valid receipt must retain crawl ID, complete-page count, and `valid=true`; missing, corrupt, or symlinked SQLite state summaries from SDW-AUTO-902 must not regress. Preserve ordinary `receipt.json` verification and downstream page diagnostics, keep all changed Python files Ruff-formatted, and leave no ignored producer artifact.",
   "problemEvidence": [
@@ -59,7 +76,7 @@
   "authority": {
     "write": true,
     "invokeAgent": false,
-    "applyPatch": false,
+    "applyPatch": true,
     "commit": false,
     "push": false,
     "release": false,
