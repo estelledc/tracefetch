@@ -14,7 +14,8 @@
     "cliVersion": "0.144.1",
     "executableSha256": "134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
     "maxSeconds": 600,
-    "maxOutputBytes": 4194304
+    "maxOutputBytes": 4194304,
+    "promptContract": "system-design-workbench.codex-producer-prompt.v2"
   },
   "protectedPaths": [
     ".git",
@@ -80,7 +81,7 @@
   },
   "controllerSourceManifest": {
     "toolVersion": "1.0.0",
-    "manifestSha256": "685a54e02f7070c6b427b5bcf1094bddb0bed378fe7a582092792edb004e7e51",
-    "sourceSetSha256": "a54277217f12396a00d955d63f577f54e6b19c29b2fb874311fda3e6b48a8f43"
+    "manifestSha256": "fd4e40d860f06a24d9732ea152d124efab472efe49920552458d408a7e9f402f",
+    "sourceSetSha256": "843089a34bb3d0b3a5c2503538c5b02474e6e1b13d039638f57f47545d95f1f5"
   }
 }
