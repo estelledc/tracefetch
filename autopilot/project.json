@@ -81,7 +81,7 @@
   },
   "controllerSourceManifest": {
     "toolVersion": "1.0.0",
-    "manifestSha256": "fd4e40d860f06a24d9732ea152d124efab472efe49920552458d408a7e9f402f",
-    "sourceSetSha256": "843089a34bb3d0b3a5c2503538c5b02474e6e1b13d039638f57f47545d95f1f5"
+    "manifestSha256": "0fbb587d6a940ebfdd11f01a1927dee86f169d22c6d5247ec91ad2a2312932f7",
+    "sourceSetSha256": "fede99b03f5d876ae2128086f674dfe4e2cc687098cfdbf37b8ea9531a38af24"
   }
 }
