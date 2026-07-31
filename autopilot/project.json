@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-project.v1",
+  "taskSchemaVersion": "system-design-workbench.autopilot-task.v1",
+  "taskDirectory": "autopilot/tasks",
+  "runtimeDirectory": ".autopilot",
+  "hardLimits": {
+    "maxMinutes": 45,
+    "maxChangedFiles": 4,
+    "maxVerificationAttempts": 2,
+    "maxPatchBytes": 65536
+  },
+  "producer": {
+    "id": "codex-exec-v1",
+    "cliVersion": "0.144.1",
+    "executableSha256": "134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
+    "maxSeconds": 600,
+    "maxOutputBytes": 4194304
+  },
+  "protectedPaths": [
+    ".git",
+    ".autopilot",
+    ".github/workflows",
+    ".gitignore",
+    "autopilot",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "uv.lock"
+  ],
+  "requiredStopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required"
+  ],
+  "checks": [
+    {
+      "id": "crawl-test",
+      "kind": "argv-v1",
+      "timeoutMs": 120000,
+      "argv": [
+        "uv",
+        "run",
+        "--locked",
+        "pytest",
+        "tests/test_crawl.py"
+      ]
+    },
+    {
+      "id": "project-check",
+      "kind": "argv-v1",
+      "timeoutMs": 300000,
+      "argv": [
+        "make",
+        "check"
+      ]
+    }
+  ]
+}

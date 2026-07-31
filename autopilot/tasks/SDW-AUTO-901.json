@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-901",
+  "status": "DRAFT",
+  "execution": {
+    "kind": "codex-patch-intent-v1",
+    "patchSha256": null,
+    "patchBytes": null
+  },
+  "objective": "Make `verify_crawl_bundle` reject a crawl receipt whose top-level `status` differs from the deterministic status derived by `_receipt_from_store` from `pages` and `max_pages`. Preserve all valid crawl receipts, reuse the producer's exact precedence for pending, complete, failed, and blocked page combinations, and add a regression that changes only a valid complete receipt's top-level status to `failed` and proves verification rejects it with a stable, specific failure.",
+  "problemEvidence": [
+    "`_receipt_from_store` deterministically derives the top-level crawl status from page statuses, terminal page count, and max_pages.",
+    "`verify_crawl_bundle` recomputes failures_by_code and validates the SQLite projection, but it never recomputes or compares the top-level crawl status.",
+    "On source HEAD c57b1bcb788d6228bbade186667c3bed46ef1996, a valid one-page complete crawl remains `valid: true` after changing only `crawl-receipt.json.status` from `complete` to `failed`.",
+    "The existing crawl test file passes before the fix, so the new regression must fail on the source behavior and pass only when the verifier enforces the producer's status contract.",
+    "The fix belongs in verification and its direct tests; changing crawl production, public models, build configuration, or schemas is outside this task."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/contracts.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 2,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": true,
+    "applyPatch": false,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": true
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen two-file candidate that makes `verify_crawl_bundle` reject a top-level status inconsistent with the producer's deterministic page projection, while the targeted crawl tests and the full TraceFetch project check pass without changing valid crawl behavior.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "crawl-status-contract-requires-behavior-change"
+  ],
+  "requiresChanges": true
+}
