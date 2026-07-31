@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "system-design-workbench.autopilot-project.v1",
+  "schemaVersion": "system-design-workbench.autopilot-project.v2",
   "taskSchemaVersion": "system-design-workbench.autopilot-task.v1",
   "taskDirectory": "autopilot/tasks",
   "runtimeDirectory": ".autopilot",
@@ -42,6 +42,18 @@
   ],
   "checks": [
     {
+      "id": "cli-test",
+      "kind": "argv-v1",
+      "timeoutMs": 120000,
+      "argv": [
+        "uv",
+        "run",
+        "--locked",
+        "pytest",
+        "tests/test_cli.py"
+      ]
+    },
+    {
       "id": "crawl-test",
       "kind": "argv-v1",
       "timeoutMs": 120000,
@@ -62,5 +74,13 @@
         "check"
       ]
     }
-  ]
+  ],
+  "reviewPolicy": {
+    "kind": "record-before-close-v1"
+  },
+  "controllerSourceManifest": {
+    "toolVersion": "1.0.0",
+    "manifestSha256": "685a54e02f7070c6b427b5bcf1094bddb0bed378fe7a582092792edb004e7e51",
+    "sourceSetSha256": "a54277217f12396a00d955d63f577f54e6b19c29b2fb874311fda3e6b48a8f43"
+  }
 }

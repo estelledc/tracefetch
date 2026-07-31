@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-902",
+  "status": "DRAFT",
+  "execution": {
+    "kind": "codex-patch-intent-v1",
+    "patchSha256": null,
+    "patchBytes": null
+  },
+  "objective": "Make `tracefetch verify <crawl-directory>` preserve the published machine-error contract when `crawl-receipt.json` is syntactically invalid, invalid UTF-8, or schema-invalid. `verify_crawl_bundle` already translates those receipt failures into a failure list, so `crawl_verification_payload` must not reparse the same invalid receipt without a failure boundary. The CLI must exit 6, write no stdout, and write exactly one `tracefetch.error.v1` JSON object to stderr with `error=verification_failed`, `retryable=false`, and a non-empty bounded `details.failures` list; it must not expose a Python traceback or an uncaught Pydantic exception. Preserve the exact successful crawl-verification payload for valid receipts and keep ordinary evidence-bundle verification unchanged. Fix the shared verification layer rather than adding a CLI-only catch or duplicating receipt validation logic.",
+  "problemEvidence": [
+    "On committed source HEAD e52d1fd8681323eacd3205677a7b3b54aec70aff, a crawl directory containing only `crawl-receipt.json` with `{}` reaches `verify_crawl_bundle`, then `crawl_verification_payload` reparses the same file and raises an uncaught Pydantic `ValidationError` with 11 missing-field errors.",
+    "The reproduced CLI process exits 1 and prints a Python traceback, contradicting README's contract that errors are one `tracefetch.error.v1` object on stderr with stable exit codes.",
+    "`verify_crawl_bundle` already catches `OSError`, `UnicodeError`, and `ValidationError` while reading the crawl receipt and returns an `invalid crawl receipt` failure; the second unguarded parse in `crawl_verification_payload` is the root divergence.",
+    "The existing `tests/test_cli.py` suite passes 7 tests on the source behavior because it covers tampered ordinary evidence but not malformed crawl receipts.",
+    "Regression coverage must call the public CLI entry point for malformed JSON, invalid UTF-8, and a valid JSON object missing required receipt fields; each case must assert exit 6, empty stdout, one parseable error envelope, and no `Traceback`, `pydantic_core`, or `ValidationError` text outside the bounded failure details.",
+    "A direct verification-layer regression must prove `crawl_verification_payload` returns `valid=false` with zero verified pages and the failure list instead of throwing when the receipt cannot be modeled.",
+    "Valid crawl receipts must retain the existing `tracefetch.crawl-verification.v1` fields, crawl ID, verified-page count, and `valid=true`; ordinary `receipt.json` verification is outside the changed control path and must remain unchanged.",
+    "The fix must reuse the result of the existing receipt failure boundary or a single shared parse result; adding a broad catch only in `cli.py` would leave `crawl_verification_payload` unsafe for its other caller and is not sufficient."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_cli.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/cli.py",
+    "src/tracefetch/contracts.py",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/errors.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "cli-test",
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "cli-test",
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 3,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": true,
+    "applyPatch": false,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": true
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen candidate that converts malformed crawl-receipt verification into the documented JSON error and exit-6 contract while valid crawl and ordinary evidence verification remain unchanged; after the frozen lineage closes, the exact product commit is pushed on its lineage branch without claiming PR, merge, release, or production acceptance.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "malformed-crawl-receipt-contract-requires-behavior-change"
+  ],
+  "requiresChanges": true
+}
