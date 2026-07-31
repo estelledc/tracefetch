@@ -3,7 +3,7 @@
   "id": "SDW-AUTO-903",
   "status": "DRAFT",
   "execution": {
-    "kind": "codex-patch-intent-v1",
+    "kind": "bound-patch-intent-v1",
     "patchSha256": null,
     "patchBytes": null
   },
@@ -17,7 +17,8 @@
     "Direct verification-layer regressions must assert the exact failure list for the two new fixed messages and must prove a valid one-page receipt still yields its real crawl ID and complete-page count when the SQLite state is missing, corrupt, or a symlink.",
     "The fix must live in the shared verification layer used by both `verify_crawl_bundle` and `crawl_verification_payload`; catching the failure only in `cli.py` leaves the payload caller unsafe.",
     "The candidate must keep all changed Python files Ruff-formatted and must not leave `.venv`, `.pytest_cache`, `.coverage`, `build`, `dist`, or other ignored artifacts in the isolated candidate clone.",
-    "This task authorizes exactly one fresh bounded transaction, not an automatic retry loop; if the producer returns `candidate-empty`, the operator will fail it closed and use the source-owned manual prepared-patch path as in SDW-AUTO-902."
+    "This task authorizes exactly one fresh bounded transaction, not an automatic retry loop; if the producer returns `candidate-empty`, the operator will fail it closed and use the source-owned manual prepared-patch path as in SDW-AUTO-902.",
+    "Transaction 4ad9cb8b-dd52-41ea-afa6-02398e528229 ran once under prompt contract v2 and failed at the Codex process boundary with `codex-exec-failed` before installing any candidate or receipt; resume moved the persisted latch to terminal `PRODUCER_OUTCOME_UNKNOWN` without a second model invocation, product write, commit, or push. The operator therefore stopped producer retries and selected the source-owned manual prepared-patch path."
   ],
   "allowedPaths": [
     "src/tracefetch/verify.py",
@@ -57,12 +58,12 @@
   },
   "authority": {
     "write": true,
-    "invokeAgent": true,
+    "invokeAgent": false,
     "applyPatch": false,
     "commit": false,
     "push": false,
     "release": false,
-    "network": true
+    "network": false
   },
   "externalOutcome": "An independent reviewer accepts a frozen candidate that adds the bounded open-handle crawl-receipt read with the two fixed failure messages while valid crawl and ordinary evidence verification remain unchanged; after the frozen lineage closes, the exact product commit is pushed on its lineage branch without claiming PR, merge, release, or production acceptance.",
   "stopConditions": [
