@@ -1,11 +1,28 @@
 {
   "schemaVersion": "system-design-workbench.autopilot-task.v1",
   "id": "SDW-AUTO-905",
-  "status": "DRAFT",
+  "status": "READY",
   "execution": {
-    "kind": "bound-patch-intent-v1",
-    "patchSha256": null,
-    "patchBytes": null
+    "kind": "prepared-bound-patch-v1",
+    "patchSha256": "38d9126043109ebf2388139d6841e82d19f17efe884d620d6d3f961de4cf7f77",
+    "patchBytes": 11144,
+    "preparation": {
+      "sourceHead": "e8bb6b4b8635b6566442d11c8e7650d3b6ed2e22",
+      "project": {
+        "path": "autopilot/project.json",
+        "fileSha256": "d2f1e89e8857477de0c0bc0ff146520929ef542ce8d60eb04deffecad2117ba4",
+        "gitBlobOid": "80388aaf9961622a139398df38326c39d1619b4f",
+        "canonicalSha256": "75ee3877eee92352025bd212299b68918be915999834e2407d2f2a2f1351d295"
+      },
+      "task": {
+        "path": "autopilot/tasks/SDW-AUTO-905.json",
+        "fileSha256": "3438d131269f78304a39dde7fca369e3218509eecdb56e3e49e6da5329631be7",
+        "gitBlobOid": "15fa9852e72ade6306c358b8914801bcf16503f4",
+        "canonicalSha256": "8be4bab909f00e3db8102ddf9462e43d1b7ff0948e3065e3b71c3f1e2cfb4216"
+      },
+      "candidateSnapshotSha256": "85c904004f94f2c62ad814760bac480ce8bbfa29312c8f0f4cfa820aac5f4ef9",
+      "producer": null
+    }
   },
   "objective": "Implement the complete bounded open-handle crawl-receipt read after the rejected 903 candidate and the environment-only failed 904 claim. Keep one O_NOFOLLOW file descriptor; classify open, fstat, read, and close boundary failures without traceback; fstat before and after; reject more than 16 MiB with `crawl receipt exceeds the size limit`; classify every non-full read as `crawl receipt changed during verification`; and map read or metadata OSError to `crawl receipt is unreadable`. Preserve exact invalid UTF-8/schema failures, valid crawl summaries, ordinary receipt verification, SQLite diagnostics, CLI exit 6, empty stdout, bounded non-reflective JSON stderr, and Ruff formatting.",
   "problemEvidence": [
@@ -54,7 +71,7 @@
   "authority": {
     "write": true,
     "invokeAgent": false,
-    "applyPatch": false,
+    "applyPatch": true,
     "commit": false,
     "push": false,
     "release": false,
