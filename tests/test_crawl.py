@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+import tracefetch.verify as verify_module
 from tracefetch.adapters.base import ReaderResult
 from tracefetch.bundle import BundleResult, write_bundle
 from tracefetch.cli import main
@@ -15,7 +17,11 @@ from tracefetch.contracts import Attempt, LinkRecord
 from tracefetch.crawl import CrawlStore, crawl_site, policy_sha256
 from tracefetch.errors import InvalidInputError
 from tracefetch.normalize import NormalizedDocument
-from tracefetch.verify import crawl_verification_payload, verify_crawl_bundle
+from tracefetch.verify import (
+    MAX_CRAWL_RECEIPT_BYTES,
+    crawl_verification_payload,
+    verify_crawl_bundle,
+)
 
 NOW = datetime(2026, 7, 24, tzinfo=UTC)
 ROOT = "https://example.test/"
@@ -254,6 +260,105 @@ def test_crawl_receipt_symlink_is_a_fixed_unreadable_failure(tmp_path: Path) -> 
     outside = tmp_path / "outside-receipt.json"
     outside.write_text("{}", encoding="utf-8")
     (output / "crawl-receipt.json").symlink_to(outside)
+
+    assert crawl_verification_payload(output)["failures"] == ["crawl receipt is unreadable"]
+
+
+def test_oversized_crawl_receipt_is_a_fixed_bounded_failure(tmp_path: Path) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"x" * (MAX_CRAWL_RECEIPT_BYTES + 1))
+
+    assert crawl_verification_payload(output) == {
+        "schema_version": "tracefetch.crawl-verification.v1",
+        "crawl_id": "",
+        "valid": False,
+        "verified_pages": 0,
+        "failures": ["crawl receipt exceeds the size limit"],
+    }
+
+
+def test_crawl_receipt_at_the_size_limit_is_not_rejected_as_oversized(tmp_path: Path) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"x" * MAX_CRAWL_RECEIPT_BYTES)
+
+    assert crawl_verification_payload(output)["failures"] == [
+        "crawl receipt failed schema validation"
+    ]
+
+
+def test_crawl_receipt_truncated_mid_read_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"x" * 70000)
+    real = verify_module._read_receipt_chunk
+    calls = 0
+
+    def fake(descriptor: int, size: int) -> bytes:
+        nonlocal calls
+        calls += 1
+        if calls >= 2:
+            return b""
+        return real(descriptor, size)
+
+    monkeypatch.setattr(verify_module, "_read_receipt_chunk", fake)
+
+    assert crawl_verification_payload(output)["failures"] == [
+        "crawl receipt changed during verification"
+    ]
+
+
+def test_crawl_receipt_short_read_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"{}")
+    real = verify_module._read_receipt_chunk
+
+    def fake(descriptor: int, size: int) -> bytes:
+        return real(descriptor, size - 1)
+
+    monkeypatch.setattr(verify_module, "_read_receipt_chunk", fake)
+
+    assert crawl_verification_payload(output)["failures"] == [
+        "crawl receipt changed during verification"
+    ]
+
+
+def test_crawl_receipt_read_error_is_a_fixed_unreadable_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"{}")
+
+    def fake(descriptor: int, size: int) -> bytes:
+        raise OSError("injected read failure")
+
+    monkeypatch.setattr(verify_module, "_read_receipt_chunk", fake)
+
+    assert crawl_verification_payload(output)["failures"] == ["crawl receipt is unreadable"]
+
+
+def test_crawl_receipt_fstat_error_is_a_fixed_unreadable_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"{}")
+
+    def fake(descriptor: int) -> os.stat_result:
+        raise OSError("injected fstat failure")
+
+    monkeypatch.setattr(verify_module.os, "fstat", fake)
 
     assert crawl_verification_payload(output)["failures"] == ["crawl receipt is unreadable"]
 

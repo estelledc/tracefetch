@@ -5,12 +5,14 @@ from pathlib import Path
 
 import pytest
 
+import tracefetch.verify as verify_module
 from tracefetch.cli import main
 from tracefetch.contracts import (
     SearchResultAttempt,
     SearchResultCandidate,
     SearchResultsEnvelope,
 )
+from tracefetch.verify import MAX_CRAWL_RECEIPT_BYTES
 
 
 def test_cli_ingest_and_verify_round_trip(
@@ -103,6 +105,88 @@ def test_cli_large_invalid_crawl_receipt_does_not_reflect_input(
     assert json.loads(captured.err)["details"]["failures"] == [
         "crawl receipt failed schema validation"
     ]
+
+
+def test_cli_oversized_crawl_receipt_stays_bounded_and_silent(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sentinel = "TOP_SECRET_SENTINEL"
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(
+        b"x" * (MAX_CRAWL_RECEIPT_BYTES + 1) + sentinel.encode()
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(["verify", str(output), "--json"])
+
+    captured = capsys.readouterr()
+    assert exit_info.value.code == 6
+    assert captured.out == ""
+    assert len(captured.err.encode("utf-8")) <= 4096
+    assert sentinel not in captured.err
+    assert json.loads(captured.err)["details"]["failures"] == [
+        "crawl receipt exceeds the size limit"
+    ]
+
+
+def test_cli_crawl_receipt_truncated_mid_read_fails_closed(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"x" * 70000)
+    real = verify_module._read_receipt_chunk
+    calls = 0
+
+    def fake(descriptor: int, size: int) -> bytes:
+        nonlocal calls
+        calls += 1
+        if calls >= 2:
+            return b""
+        return real(descriptor, size)
+
+    monkeypatch.setattr(verify_module, "_read_receipt_chunk", fake)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(["verify", str(output), "--json"])
+
+    captured = capsys.readouterr()
+    assert exit_info.value.code == 6
+    assert captured.out == ""
+    assert json.loads(captured.err)["details"]["failures"] == [
+        "crawl receipt changed during verification"
+    ]
+    assert "Traceback" not in captured.err
+
+
+def test_cli_crawl_receipt_read_error_is_fixed_and_bounded(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"TOP_SECRET_SENTINEL")
+
+    def fake(descriptor: int, size: int) -> bytes:
+        raise OSError("injected read failure")
+
+    monkeypatch.setattr(verify_module, "_read_receipt_chunk", fake)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(["verify", str(output), "--json"])
+
+    captured = capsys.readouterr()
+    assert exit_info.value.code == 6
+    assert captured.out == ""
+    assert len(captured.err.encode("utf-8")) <= 4096
+    assert "TOP_SECRET_SENTINEL" not in captured.err
+    assert json.loads(captured.err)["details"]["failures"] == ["crawl receipt is unreadable"]
+    assert "Traceback" not in captured.err
 
 
 def test_cli_schema_and_doctor_emit_machine_readable_json(

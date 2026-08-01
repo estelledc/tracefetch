@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
+import stat
 from collections import Counter
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +20,8 @@ from tracefetch.contracts import (
     EvidenceReceipt,
     LinkRecord,
 )
+
+MAX_CRAWL_RECEIPT_BYTES = 16 * 1024 * 1024
 
 
 def verify_bundle(bundle_dir: Path) -> list[str]:
@@ -207,15 +212,56 @@ def verification_payload(bundle_dir: Path) -> dict[str, object]:
     }
 
 
-def _load_crawl_receipt(receipt_path: Path) -> tuple[CrawlReceipt | None, list[str]]:
-    if receipt_path.is_symlink():
-        return None, ["crawl receipt is unreadable"]
+def _read_receipt_chunk(descriptor: int, size: int) -> bytes:
+    return os.read(descriptor, size)
+
+
+def _read_crawl_receipt_bytes(receipt_path: Path) -> tuple[bytes | None, str | None]:
     try:
-        source = receipt_path.read_text(encoding="utf-8")
-    except UnicodeError:
-        return None, ["crawl receipt is not valid UTF-8"]
+        descriptor = os.open(receipt_path, os.O_RDONLY | os.O_NOFOLLOW)
     except OSError:
-        return None, ["crawl receipt is unreadable"]
+        return None, "crawl receipt is unreadable"
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            return None, "crawl receipt is unreadable"
+        if before.st_size > MAX_CRAWL_RECEIPT_BYTES:
+            return None, "crawl receipt exceeds the size limit"
+        chunks: list[bytes] = []
+        remaining = before.st_size
+        while remaining > 0:
+            requested = min(65536, remaining)
+            try:
+                chunk = _read_receipt_chunk(descriptor, requested)
+            except OSError:
+                return None, "crawl receipt is unreadable"
+            if len(chunk) != requested:
+                return None, "crawl receipt changed during verification"
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino, before.st_size) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+        ):
+            return None, "crawl receipt changed during verification"
+        return b"".join(chunks), None
+    except OSError:
+        return None, "crawl receipt is unreadable"
+    finally:
+        with suppress(OSError):
+            os.close(descriptor)
+
+
+def _load_crawl_receipt(receipt_path: Path) -> tuple[CrawlReceipt | None, list[str]]:
+    received, failure = _read_crawl_receipt_bytes(receipt_path)
+    if received is None:
+        return None, [failure or "crawl receipt is unreadable"]
+    try:
+        source = received.decode("utf-8")
+    except UnicodeDecodeError:
+        return None, ["crawl receipt is not valid UTF-8"]
     try:
         return CrawlReceipt.model_validate_json(source), []
     except ValidationError:
