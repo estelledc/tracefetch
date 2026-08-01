@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-906",
+  "status": "DRAFT",
+  "execution": {
+    "kind": "bound-patch-intent-v1",
+    "patchSha256": null,
+    "patchBytes": null
+  },
+  "objective": "Make the bounded crawl-receipt open itself non-blocking and fail closed when the required safe-open primitives are unavailable. The shared verification layer must require both `os.O_NOFOLLOW` and `os.O_NONBLOCK`, open with `O_RDONLY | O_NOFOLLOW | O_NONBLOCK`, and map a missing flag or any open/fstat/read boundary failure to the fixed `crawl receipt is unreadable` result without traceback. A FIFO, socket, device, directory, or other non-regular target must never block verification and must remain unreadable. Preserve the accepted SDW-AUTO-905 16 MiB limit, exact full-chunk rule, pre/post fstat identity and size check, valid crawl summaries, malformed UTF-8/schema failures, CLI exit 6/empty stdout/bounded non-reflective JSON stderr, ordinary evidence verification, and all existing diagnostics.",
+  "problemEvidence": [
+    "Post-push review of product commit 726c0f279eeb2029cb3f8600c66478d7a292520c found that `_read_crawl_receipt_bytes` calls `os.open` with `O_RDONLY | O_NOFOLLOW` and only rejects non-regular files after open. Opening a FIFO read-only can block before fstat, so a local special-file replacement can hang `tracefetch verify` despite the later regular-file check.",
+    "The source-owned Autopilot controller already uses `O_NOFOLLOW | O_NONBLOCK` for untrusted local file reads. The receipt reader should apply the same primitive rather than claiming a bounded verification path while open itself remains unbounded in time.",
+    "A local capability probe confirmed Darwin exposes both flags. A deterministic monkeypatch deleting `os.O_NOFOLLOW` made the current shared loader escape `AttributeError` instead of returning the fixed unreadable failure. Platforms lacking either primitive must fail closed; silently dropping no-follow or non-blocking semantics would weaken the stated security contract.",
+    "Regression coverage must exercise the public payload/CLI contract for missing safe-open flags without globally mutating unrelated os users, and a POSIX-only real FIFO subprocess probe must demonstrate verification returns promptly with exit 6, empty stdout, one bounded JSON error, and no traceback.",
+    "The final change belongs only in `src/tracefetch/verify.py`, `tests/test_cli.py`, and `tests/test_crawl.py`; no public schema or producer behavior change is required."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_cli.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/cli.py",
+    "src/tracefetch/contracts.py",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/errors.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "cli-test",
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "cli-test",
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 3,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": false,
+    "applyPatch": false,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": false
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen successor candidate proving crawl receipt verification cannot block on a FIFO and cannot weaken safe-open semantics when O_NOFOLLOW or O_NONBLOCK is unavailable; after close, the exact direct-successor product commit is pushed and a fresh delivery ref-match observation is exported without claiming PR, merge, release, or production acceptance.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "safe-open-contract-requires-platform-fallback"
+  ],
+  "requiresChanges": true
+}
