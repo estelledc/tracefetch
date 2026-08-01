@@ -4,6 +4,15 @@ All notable changes are documented here.
 
 ## Unreleased
 
+## 1.0.1 - 2026-08-01
+
+- Make crawl receipt verification recompute the top-level status from page records.
+- Return fixed, bounded failures for malformed receipts and invalid SQLite state without reflecting
+  input text, local paths, or tracebacks.
+- Read crawl receipts through one non-blocking, no-follow file descriptor with a 16 MiB limit,
+  complete-chunk checks, and pre/post identity validation.
+- Preserve complete Autopilot lineage for the rejected and accepted security-boundary candidates.
+
 ## 1.0.0 - 2026-07-24
 
 - Promote TraceFetch from an evidence-acquisition alpha to an agent-first local and public search

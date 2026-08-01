@@ -27,10 +27,10 @@ data.
 
 ## Install
 
-After the `v1.0.0` GitHub release is published:
+After the `v1.0.1` GitHub release is published:
 
 ```bash
-pipx install "git+https://github.com/estelledc/tracefetch.git@v1.0.0"
+pipx install "git+https://github.com/estelledc/tracefetch.git@v1.0.1"
 tracefetch --version
 tracefetch doctor
 ```
@@ -192,7 +192,7 @@ FIRECRAWL_API_KEY=... tracefetch fetch https://example.com \
 Install local document conversion separately:
 
 ```bash
-pipx install "tracefetch[markitdown] @ git+https://github.com/estelledc/tracefetch.git@v1.0.0"
+pipx install "tracefetch[markitdown] @ git+https://github.com/estelledc/tracefetch.git@v1.0.1"
 tracefetch ingest report.pdf \
   --source-url https://example.com/report.pdf \
   --output /tmp/tracefetch-report
