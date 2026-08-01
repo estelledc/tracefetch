@@ -7,8 +7,8 @@ verified.
 ## 1.0 acceptance gates
 
 1. `make check` passes on Python 3.11, 3.12, and 3.13.
-2. `python scripts/check_version.py --tag v1.0.0` confirms pyproject, package, changelog, and tag
-   coherence.
+2. `python scripts/check_version.py --tag vMAJOR.MINOR.PATCH` confirms pyproject, package,
+   changelog, and tag coherence.
 3. A clean clone can install the wheel and execute `tracefetch --version`, local search, doctor,
    schema, and provider-example smoke tests.
 4. Public search runs at least one configured provider and reports partial failure rather than

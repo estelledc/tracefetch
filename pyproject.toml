@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tracefetch"
-version = "1.0.0"
+version = "1.0.1"
 description = "Agent-first local and web search with provenance-bearing evidence bundles."
 readme = "README.md"
 requires-python = ">=3.11"
