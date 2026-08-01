@@ -217,8 +217,12 @@ def _read_receipt_chunk(descriptor: int, size: int) -> bytes:
 
 
 def _read_crawl_receipt_bytes(receipt_path: Path) -> tuple[bytes | None, str | None]:
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    nonblock = getattr(os, "O_NONBLOCK", None)
+    if not isinstance(nofollow, int) or not isinstance(nonblock, int):
+        return None, "crawl receipt is unreadable"
     try:
-        descriptor = os.open(receipt_path, os.O_RDONLY | os.O_NOFOLLOW)
+        descriptor = os.open(receipt_path, os.O_RDONLY | nofollow | nonblock)
     except OSError:
         return None, "crawl receipt is unreadable"
     try:

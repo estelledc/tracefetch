@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -176,6 +177,36 @@ def test_cli_crawl_receipt_read_error_is_fixed_and_bounded(
         raise OSError("injected read failure")
 
     monkeypatch.setattr(verify_module, "_read_receipt_chunk", fake)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(["verify", str(output), "--json"])
+
+    captured = capsys.readouterr()
+    assert exit_info.value.code == 6
+    assert captured.out == ""
+    assert len(captured.err.encode("utf-8")) <= 4096
+    assert "TOP_SECRET_SENTINEL" not in captured.err
+    assert json.loads(captured.err)["details"]["failures"] == ["crawl receipt is unreadable"]
+    assert "Traceback" not in captured.err
+
+
+@pytest.mark.parametrize("missing_flag", ["O_NOFOLLOW", "O_NONBLOCK"])
+def test_cli_crawl_receipt_requires_safe_open_flags(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    missing_flag: str,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"TOP_SECRET_SENTINEL")
+    available = {
+        "O_NOFOLLOW": verify_module.os.O_NOFOLLOW,
+        "O_NONBLOCK": verify_module.os.O_NONBLOCK,
+        "O_RDONLY": verify_module.os.O_RDONLY,
+    }
+    del available[missing_flag]
+    monkeypatch.setattr(verify_module, "os", SimpleNamespace(**available))
 
     with pytest.raises(SystemExit) as exit_info:
         main(["verify", str(output), "--json"])

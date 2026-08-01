@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -361,6 +364,56 @@ def test_crawl_receipt_fstat_error_is_a_fixed_unreadable_failure(
     monkeypatch.setattr(verify_module.os, "fstat", fake)
 
     assert crawl_verification_payload(output)["failures"] == ["crawl receipt is unreadable"]
+
+
+@pytest.mark.parametrize("missing_flag", ["O_NOFOLLOW", "O_NONBLOCK"])
+def test_crawl_receipt_requires_safe_open_flags(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    missing_flag: str,
+) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    (output / "crawl-receipt.json").write_bytes(b"{}")
+    available = {
+        "O_NOFOLLOW": os.O_NOFOLLOW,
+        "O_NONBLOCK": os.O_NONBLOCK,
+        "O_RDONLY": os.O_RDONLY,
+    }
+    del available[missing_flag]
+    monkeypatch.setattr(verify_module, "os", SimpleNamespace(**available))
+
+    assert crawl_verification_payload(output)["failures"] == ["crawl receipt is unreadable"]
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="requires POSIX FIFO support")
+def test_crawl_receipt_fifo_fails_without_blocking(tmp_path: Path) -> None:
+    output = tmp_path / "crawl"
+    output.mkdir()
+    os.mkfifo(output / "crawl-receipt.json")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import json,sys;"
+                "from pathlib import Path;"
+                "from tracefetch.verify import crawl_verification_payload;"
+                "print(json.dumps(crawl_verification_payload(Path(sys.argv[1]))))"
+            ),
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+
+    assert completed.returncode == 0
+    assert json.loads(completed.stdout)["failures"] == ["crawl receipt is unreadable"]
+    assert completed.stderr == ""
+    assert "Traceback" not in completed.stderr
 
 
 @pytest.mark.parametrize("state_kind", ["missing", "corrupt", "symlink"])
