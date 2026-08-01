@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-905",
+  "status": "DRAFT",
+  "execution": {
+    "kind": "bound-patch-intent-v1",
+    "patchSha256": null,
+    "patchBytes": null
+  },
+  "objective": "Implement the complete bounded open-handle crawl-receipt read after the rejected 903 candidate and the environment-only failed 904 claim. Keep one O_NOFOLLOW file descriptor; classify open, fstat, read, and close boundary failures without traceback; fstat before and after; reject more than 16 MiB with `crawl receipt exceeds the size limit`; classify every non-full read as `crawl receipt changed during verification`; and map read or metadata OSError to `crawl receipt is unreadable`. Preserve exact invalid UTF-8/schema failures, valid crawl summaries, ordinary receipt verification, SQLite diagnostics, CLI exit 6, empty stdout, bounded non-reflective JSON stderr, and Ruff formatting.",
+  "problemEvidence": [
+    "Independent review of frozen SDW-AUTO-903 snapshot 387526abb2a0adc618b4fcc357ba6ddd936b394f0c0b41de521f31dd9a2c4c1d rejected it with recorded reason codes `read-error-unhandled` and `short-read-undetected`; that lineage terminated without product commit or push.",
+    "Injected read OSError escaped the shared verification layer, while an injected non-empty partial read was misclassified as schema-invalid instead of changed-during-verification.",
+    "Additional review showed fstat and close are OSError boundaries too: fstat must map to the fixed unreadable result, while close must never replace the already-determined fixed verification result with an exception.",
+    "SDW-AUTO-904 never applied a product patch: its one claim terminated at generation 2 because the isolated clone lacked the locked dev extra and both declared baseline commands could not spawn pytest. The failed runtime was archived outside the target, the dev environment was installed from uv.lock, and both unmodified baseline files then passed (11 CLI tests and 20 crawl tests).",
+    "The successor candidate retains the complete 903 scope and adds direct and public-CLI regressions for short read, read OSError, and metadata OSError. Only the three original product/test paths are required."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_cli.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/cli.py",
+    "src/tracefetch/contracts.py",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/errors.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "cli-test",
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "cli-test",
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 3,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": false,
+    "applyPatch": false,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": false
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen successor candidate that closes all concrete 903 review findings and the additional metadata/close error boundary while preserving the full bounded receipt contract; after close, the exact product commit is pushed on its lineage branch and a delivery ref-match observation is exported without claiming PR, merge, release, or production acceptance.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "receipt-boundary-contract-requires-behavior-change"
+  ],
+  "requiresChanges": true
+}
