@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-902",
+  "status": "READY",
+  "execution": {
+    "kind": "prepared-bound-patch-v1",
+    "patchSha256": "152fd43e9de0efdd87b9b8dc5fcfa154a4616e5f37cc444d4547247ff81edb08",
+    "patchBytes": 11818,
+    "preparation": {
+      "sourceHead": "cff9587db73c7a31d5e864b2792c6440b54af02f",
+      "project": {
+        "path": "autopilot/project.json",
+        "fileSha256": "4729153e18f731cc6c3f1450320eab479d44147140cdd9a1c63b7949b209e412",
+        "gitBlobOid": "e31b776e55cee1136758764ced3af1f60b6ff04b",
+        "canonicalSha256": "942ec6ad09ddc509953064ce3be3bea397c818875ad6138cefccf0de778b65d8"
+      },
+      "task": {
+        "path": "autopilot/tasks/SDW-AUTO-902.json",
+        "fileSha256": "417f5e634d62b8decbe2df0b911724ef032b8bd67aa863cecaef9de153647fad",
+        "gitBlobOid": "776e8857d300c2a7afa2d24b268a142c1e145eed",
+        "canonicalSha256": "e57c2d195c215a940ffa3be19ba92200000ab26993555fec563171d0e3e197a3"
+      },
+      "candidateSnapshotSha256": "cb7dc6e8f230db839bc2f58fa8dc1d114392afafe13d7a6f52870c66a31ef808",
+      "producer": null
+    }
+  },
+  "objective": "Make `tracefetch verify <crawl-directory>` preserve its JSON error contract for malformed crawl receipts and corrupted crawl state. Use one shared receipt parse result. Map malformed/schema-invalid JSON, invalid UTF-8, and unreadable receipts to the exact fixed failures `crawl receipt failed schema validation`, `crawl receipt is not valid UTF-8`, and `crawl receipt is unreadable` without reflecting load-boundary exception or input text. CLI failures must exit 6 with empty stdout and one `tracefetch.error.v1` stderr object; a 5000-page schema-invalid sentinel case must stay within 4096 bytes and not echo the sentinel. A successfully modeled receipt must retain its crawl ID and complete-page count when state is missing, corrupt, or a symlink. SQLite query and row-projection `sqlite3.Error`, `TypeError`, `ValueError`, or `OverflowError` must become `crawl SQLite state is invalid`, never a traceback. Preserve valid crawl payloads, ordinary evidence verification, and existing downstream page diagnostics. Fix the shared verification layer, keep all changed Python files Ruff-formatted, and leave no ignored producer artifact.",
+  "problemEvidence": [
+    "On committed source HEAD e52d1fd8681323eacd3205677a7b3b54aec70aff, a crawl directory containing only `crawl-receipt.json` with `{}` reaches `verify_crawl_bundle`, then `crawl_verification_payload` reparses the same file and raises an uncaught Pydantic `ValidationError` with 11 missing-field errors.",
+    "The reproduced CLI process exits 1 and prints a Python traceback, contradicting README's contract that errors are one `tracefetch.error.v1` object on stderr with stable exit codes.",
+    "`verify_crawl_bundle` already catches `OSError`, `UnicodeError`, and `ValidationError` while reading the crawl receipt and returns an `invalid crawl receipt` failure; the second unguarded parse in `crawl_verification_payload` is the root divergence.",
+    "The existing `tests/test_cli.py` suite passes 7 tests on the source behavior because it covers tampered ordinary evidence but not malformed crawl receipts.",
+    "Regression coverage must call the public CLI entry point for malformed JSON, invalid UTF-8, and a valid JSON object missing required receipt fields; each case must assert exit 6, empty stdout, one parseable error envelope, and no `Traceback`, `pydantic_core`, or `ValidationError` text outside the bounded failure details.",
+    "A direct verification-layer regression must prove `crawl_verification_payload` returns `valid=false` with zero verified pages and the failure list instead of throwing when the receipt cannot be modeled.",
+    "Valid crawl receipts must retain the existing `tracefetch.crawl-verification.v1` fields, crawl ID, verified-page count, and `valid=true`; ordinary `receipt.json` verification is outside the changed control path and must remain unchanged.",
+    "The fix must reuse the result of the existing receipt failure boundary or a single shared parse result; adding a broad catch only in `cli.py` would leave `crawl_verification_payload` unsafe for its other caller and is not sufficient.",
+    "Transaction a2433ac0-fa05-4b99-87a8-3c46b0354cdf produced a semantically plausible three-file candidate whose focused CLI/crawl tests passed 25/25, but `ruff format --check .` rejected multiline expressions in `src/tracefetch/verify.py` and `tests/test_crawl.py`; that candidate was formally rejected as `ruff-format-contract-failed` and must not be installed or repaired manually.",
+    "Independent review of the rejected candidate showed that directly embedding Pydantic `ValidationError` text is a security and availability failure: a 5000-page invalid receipt produced about 2.4 MB of stderr, a single failure near 2.38 million characters, and reflected `TOP_SECRET_SENTINEL`; fixed portable failure messages and a 4096-byte complete-envelope bound are therefore hard acceptance gates.",
+    "The rejected helper returned `receipt=None` before parsing whenever `crawl.sqlite3` was a symlink, so a valid one-page receipt's failure payload regressed from its real crawl ID and verified-page count to an empty ID and zero; receipt validity and state validity must remain separate.",
+    "Transaction eeec5b9e-6560-463d-83ed-54ed5e2b59cd invoked the producer once but candidate audit rejected an ignored generated path; resume correctly ended at `PRODUCER_OUTCOME_UNKNOWN` without invoking the model again. A replacement producer may run checks only if it leaves no `.venv`, `.pytest_cache`, `.coverage`, `build`, `dist`, or other ignored output in the isolated candidate clone.",
+    "Transaction 451a4c03-f2e6-45b8-a09b-8e1b7f660cc6 produced a formatted candidate that passed focused 27/27 and full 117/117 checks, bounded a 5000-page schema-invalid sentinel case to 242 bytes, and preserved valid receipt summaries for missing, corrupt, and symlinked state. It was formally rejected after a probe placed a sentinel in a schema-valid page URL and bundle path. Independent review showed that probe exercised existing downstream diagnostics rather than the malformed receipt load boundary; broad redaction would change public behavior and exceed this task, so the rejected candidate cannot be reused but the replacement must retain its narrower load-boundary semantics.",
+    "An explicit input-byte ceiling and open-handle protection against local concurrent replacement are not defined by the current TraceFetch receipt contract. They remain separate follow-up risks; this task must not invent a new size threshold or claim TOCTOU protection while fixing the confirmed exception and output-reflection path.",
+    "Transaction a6bd4c8a-8fc3-4c88-9c54-503e899e2a00 produced the calibrated load-boundary behavior and passed 29 focused tests, but `ruff format --check .` rejected one multiline call in `tests/test_cli.py`: `(output / \"crawl-receipt.json\").write_text(json.dumps({\"pages\": pages}), encoding=\"utf-8\")` must remain on the formatter's single line. That candidate was formally rejected as `ruff-format-contract-failed`; the replacement must use the exact committed Ruff style without relying on a later formatting patch.",
+    "Transaction 94c87198-b226-4f21-a7dc-6d333bd0e194 fixed the formatter issue but left `_verify_crawl_state` row conversion outside its `sqlite3.Error` boundary. After updating `pages.depth` to the string `not-an-integer`, the public CLI still exited 1 with an uncaught `ValueError` traceback. That candidate was formally rejected as `corrupt-state-traceback`; regression coverage must tamper a schema-valid crawl SQLite row, assert the internal payload retains crawl ID and complete-page count with `crawl SQLite state is invalid`, and assert the CLI still exits 6 with one JSON error.",
+    "Transaction 5b1625c6-77da-448e-94a5-d19d1e6da0ad implemented the SQLite conversion boundary and passed 28 focused tests, but Ruff rejected two multiline forms. The replacement must keep `assert json.loads(captured.err)[\"details\"][\"failures\"][-1] == (\"crawl SQLite state is invalid\")` on one line; that candidate was formally rejected as `ruff-format-contract-failed` and cannot be post-formatted or reused.",
+    "Transaction 8c95c95c-3d1b-4509-8c0f-6f841a7c8afd covered the corrupt-row contract and passed 31 focused tests, but Ruff rejected an inline verified-pages conditional in the result dictionary; the replacement should compute a local `verified_pages` value before constructing the dictionary so the formatter owns layout. It also mapped a receipt symlink to the legacy combined symlink message instead of the required exact `crawl receipt is unreadable`. The candidate was formally rejected as `receipt-symlink-contract-mismatch` plus `ruff-format-contract-failed`.",
+    "After the seventh rejected batch, the operator paused new TraceFetch transactions and changed the source-owned controller instead of retrying the same producer contract. Pushed controller commit 69f75e573e5b077878152dae75f534ed1615c33d adds prompt contract v2, which requires the producer to run declared baseline checks before editing, rerun every baseline and acceptance recipe before finishing, and remove generated ignored artifacts. The new controller source set 843089a34bb3d0b3a5c2503538c5b02474e6e1b13d039638f57f47545d95f1f5 is a real workflow delta; it authorizes exactly one fresh bounded transaction, not an automatic retry loop.",
+    "Transaction ac575b5c-4441-4f68-a037-c725097dba7f ran once under prompt contract v2 and returned `candidate-empty`; resume moved the persisted latch to terminal `PRODUCER_OUTCOME_UNKNOWN` without a second model invocation, candidate installation, product write, commit, or push. The operator therefore stopped producer retries and selected the source-owned manual prepared-patch path. The independently authored three-file patch is 11818 bytes with SHA-256 152fd43e9de0efdd87b9b8dc5fcfa154a4616e5f37cc444d4547247ff81edb08; it passed 31 focused tests and full `make check` with 121 tests and 82.74% coverage before binding."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_cli.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/cli.py",
+    "src/tracefetch/contracts.py",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/errors.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "cli-test",
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "cli-test",
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 3,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": false,
+    "applyPatch": true,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": false
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen candidate that converts malformed crawl-receipt verification into the documented JSON error and exit-6 contract while valid crawl and ordinary evidence verification remain unchanged; after the frozen lineage closes, the exact product commit is pushed on its lineage branch without claiming PR, merge, release, or production acceptance.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "malformed-crawl-receipt-contract-requires-behavior-change"
+  ],
+  "requiresChanges": true
+}

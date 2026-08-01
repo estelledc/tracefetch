@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-903",
+  "status": "READY",
+  "execution": {
+    "kind": "prepared-bound-patch-v1",
+    "patchSha256": "db891b31290487c4c84aa101517c5d3e4dc89a0926c6cfe5fe5956cbe162f980",
+    "patchBytes": 7991,
+    "preparation": {
+      "sourceHead": "e53c5db7ea0c25c71617e95dfacf89d052fead57",
+      "project": {
+        "path": "autopilot/project.json",
+        "fileSha256": "d2f1e89e8857477de0c0bc0ff146520929ef542ce8d60eb04deffecad2117ba4",
+        "gitBlobOid": "80388aaf9961622a139398df38326c39d1619b4f",
+        "canonicalSha256": "75ee3877eee92352025bd212299b68918be915999834e2407d2f2a2f1351d295"
+      },
+      "task": {
+        "path": "autopilot/tasks/SDW-AUTO-903.json",
+        "fileSha256": "c064da6df401043cf0218bf56ff3fe933bff6674023338caf241dccf52a1bcda",
+        "gitBlobOid": "787eb00ce96ad6c57e4de092fbef34bdeb0739ba",
+        "canonicalSha256": "d9c1638fe487f4a89123f9f0938701d103b26b8c4c9bc07cf647eccccb5561db"
+      },
+      "candidateSnapshotSha256": "7b95b0e62b766074ed49ef063aa620ce1ba3bb545197bb4c000f933706a8cc47",
+      "producer": null
+    }
+  },
+  "objective": "Add a bounded open-handle crawl-receipt read so `tracefetch verify <crawl-directory>` cannot allocate unbounded memory from `crawl-receipt.json` and cannot parse a locally replaced file. The shared verification layer must open the receipt with `O_NOFOLLOW`, keep one file descriptor, fstat before and after, read in bounded chunks with a short-read check, and require identical device, inode, and byte size. A receipt larger than 16 MiB maps to the exact fixed failure `crawl receipt exceeds the size limit`; a receipt that changes while being read maps to `crawl receipt changed during verification`; symlink, unreadable, invalid UTF-8, and schema-invalid receipts keep the existing exact messages `crawl receipt is unreadable`, `crawl receipt is not valid UTF-8`, and `crawl receipt failed schema validation` without reflecting exception text, receipt content, or local paths. CLI failures must exit 6 with empty stdout and one bounded `tracefetch.error.v1` stderr object under 4096 bytes. A valid receipt must retain crawl ID, complete-page count, and `valid=true`; missing, corrupt, or symlinked SQLite state summaries from SDW-AUTO-902 must not regress. Preserve ordinary `receipt.json` verification and downstream page diagnostics, keep all changed Python files Ruff-formatted, and leave no ignored producer artifact.",
+  "problemEvidence": [
+    "The SDW-AUTO-902 lineage explicitly deferred this risk: an explicit input-byte ceiling and open-handle protection against local concurrent replacement are not defined by the current TraceFetch receipt contract, and the 902 fix was forbidden from inventing them.",
+    "`_load_crawl_receipt` currently calls `Path.is_symlink()` and then `Path.read_text(encoding=\"utf-8\")`, which fully allocates the decoded file before validation; an arbitrarily large `crawl-receipt.json` therefore drives unbounded memory use with no fixed failure boundary.",
+    "The symlink check and the open are separate path operations, so a local concurrent writer can replace `crawl-receipt.json` between them and verification parses a different file than the one that was checked.",
+    "The existing fixed load-boundary messages, the 5000-page sentinel bounds, and the shared single-parse result were accepted in SDW-AUTO-902 and must remain byte-for-byte unchanged for schema-invalid, invalid UTF-8, and unreadable receipts.",
+    "Regression coverage must call the public CLI entry point for an oversized receipt and for a mid-read truncation, asserting exit 6, empty stdout, one parseable error envelope, total stderr no larger than 4096 bytes, and no receipt-content sentinel reflection.",
+    "Direct verification-layer regressions must assert the exact failure list for the two new fixed messages and must prove a valid one-page receipt still yields its real crawl ID and complete-page count when the SQLite state is missing, corrupt, or a symlink.",
+    "The fix must live in the shared verification layer used by both `verify_crawl_bundle` and `crawl_verification_payload`; catching the failure only in `cli.py` leaves the payload caller unsafe.",
+    "The candidate must keep all changed Python files Ruff-formatted and must not leave `.venv`, `.pytest_cache`, `.coverage`, `build`, `dist`, or other ignored artifacts in the isolated candidate clone.",
+    "This task authorizes exactly one fresh bounded transaction, not an automatic retry loop; if the producer returns `candidate-empty`, the operator will fail it closed and use the source-owned manual prepared-patch path as in SDW-AUTO-902.",
+    "Transaction 4ad9cb8b-dd52-41ea-afa6-02398e528229 ran once under prompt contract v2 and failed at the Codex process boundary with `codex-exec-failed` before installing any candidate or receipt; resume moved the persisted latch to terminal `PRODUCER_OUTCOME_UNKNOWN` without a second model invocation, product write, commit, or push. The operator therefore stopped producer retries and selected the source-owned manual prepared-patch path."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_cli.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/cli.py",
+    "src/tracefetch/contracts.py",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/errors.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "cli-test",
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "cli-test",
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 3,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": false,
+    "applyPatch": true,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": false
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen candidate that adds the bounded open-handle crawl-receipt read with the two fixed failure messages while valid crawl and ordinary evidence verification remain unchanged; after the frozen lineage closes, the exact product commit is pushed on its lineage branch without claiming PR, merge, release, or production acceptance.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "receipt-boundary-contract-requires-behavior-change"
+  ],
+  "requiresChanges": true
+}

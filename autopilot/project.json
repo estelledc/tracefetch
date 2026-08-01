@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-project.v2",
+  "taskSchemaVersion": "system-design-workbench.autopilot-task.v1",
+  "taskDirectory": "autopilot/tasks",
+  "runtimeDirectory": ".autopilot",
+  "hardLimits": {
+    "maxMinutes": 45,
+    "maxChangedFiles": 4,
+    "maxVerificationAttempts": 2,
+    "maxPatchBytes": 65536
+  },
+  "producer": {
+    "id": "codex-exec-v1",
+    "cliVersion": "0.144.1",
+    "executableSha256": "134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
+    "maxSeconds": 600,
+    "maxOutputBytes": 4194304,
+    "promptContract": "system-design-workbench.codex-producer-prompt.v2"
+  },
+  "protectedPaths": [
+    ".git",
+    ".autopilot",
+    ".github/workflows",
+    ".gitignore",
+    "autopilot",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "uv.lock"
+  ],
+  "requiredStopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required"
+  ],
+  "checks": [
+    {
+      "id": "cli-test",
+      "kind": "argv-v1",
+      "timeoutMs": 120000,
+      "argv": [
+        "uv",
+        "run",
+        "--locked",
+        "pytest",
+        "tests/test_cli.py"
+      ]
+    },
+    {
+      "id": "crawl-test",
+      "kind": "argv-v1",
+      "timeoutMs": 120000,
+      "argv": [
+        "uv",
+        "run",
+        "--locked",
+        "pytest",
+        "tests/test_crawl.py"
+      ]
+    },
+    {
+      "id": "project-check",
+      "kind": "argv-v1",
+      "timeoutMs": 300000,
+      "argv": [
+        "make",
+        "check"
+      ]
+    }
+  ],
+  "reviewPolicy": {
+    "kind": "record-before-close-v1"
+  },
+  "controllerSourceManifest": {
+    "toolVersion": "1.0.0",
+    "manifestSha256": "0fbb587d6a940ebfdd11f01a1927dee86f169d22c6d5247ec91ad2a2312932f7",
+    "sourceSetSha256": "fede99b03f5d876ae2128086f674dfe4e2cc687098cfdbf37b8ea9531a38af24"
+  }
+}

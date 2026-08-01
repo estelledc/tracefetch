@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-901",
+  "status": "READY",
+  "execution": {
+    "kind": "prepared-bound-patch-v1",
+    "patchSha256": "78508dd8d7e36e6b172dec2d659130119b5275ae1c9cc96c3e7cc5932c7a8c16",
+    "patchBytes": 2454,
+    "preparation": {
+      "sourceHead": "ad98560072e5938c2814f045ddd2ac680d7dc583",
+      "project": {
+        "path": "autopilot/project.json",
+        "fileSha256": "1687980d1f6ff5c4f330cc385c22138e1e18ea01ccb3628f3ee549b56be4753a",
+        "gitBlobOid": "a4adf2f2ec76ab0e4297d6da52a85db3ff32809b",
+        "canonicalSha256": "aa4e0a90a916fd297aac585b19a43ae6feec951b1226424fc8936fe585b6acbf"
+      },
+      "task": {
+        "path": "autopilot/tasks/SDW-AUTO-901.json",
+        "fileSha256": "e11baa1d3c0775c9aec5098183a7bb7c8d12ce52124a2a5850559a13254295d5",
+        "gitBlobOid": "73d4ea0c5d5ef022f146a817c8945f4c54bb16a4",
+        "canonicalSha256": "3d08463bf3c304c3c0cd163834eaacaf368c443cf6b55051ce8d04b40819909b"
+      },
+      "candidateSnapshotSha256": "be883bbcbf58d84bcccb3c059c27543fc1dcfdd8516b6660bea81c9f17891f49",
+      "producer": {
+        "schemaVersion": "system-design-workbench.codex-producer-receipt.v1",
+        "id": "codex-exec-v1",
+        "cliVersion": "0.144.1",
+        "executableSha256": "134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
+        "argvLabel": "codex exec fixed-contract-v1",
+        "sourceBindingSha256": "76b7f0fb9a030699c7414b7bf6e0da880b680954d62702e307fec4f75ce93c07",
+        "promptSha256": "004e4f069911910c9db5acc36ea123f1e578671375e91e1e6f23088e6668364f",
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false,
+        "outputLimitExceeded": false,
+        "durationMs": 72416,
+        "stdout": {
+          "bytes": 44792,
+          "sha256": "242bbda2d8f0a65d9c8f32f393649e4abdd4eb862c5f655e63ce94671c0c3ffe"
+        },
+        "stderr": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "events": {
+          "lineCount": 23,
+          "turnCompletedCount": 1,
+          "errorCount": 0
+        },
+        "patchSha256": "78508dd8d7e36e6b172dec2d659130119b5275ae1c9cc96c3e7cc5932c7a8c16",
+        "patchBytes": 2454,
+        "candidateSnapshotSha256": "be883bbcbf58d84bcccb3c059c27543fc1dcfdd8516b6660bea81c9f17891f49"
+      }
+    }
+  },
+  "objective": "Make `verify_crawl_bundle` reject a crawl receipt whose top-level `status` differs from the deterministic status derived by `_receipt_from_store` from `pages` and `max_pages`. Preserve all valid crawl receipts, reuse the producer's exact precedence for pending, complete, failed, and blocked page combinations, add a regression that changes only a valid complete receipt's top-level status to `failed` and proves verification rejects it with a stable, specific failure, and keep both changed files compliant with the repository's current Ruff formatting contract.",
+  "problemEvidence": [
+    "`_receipt_from_store` deterministically derives the top-level crawl status from page statuses, terminal page count, and max_pages.",
+    "`verify_crawl_bundle` recomputes failures_by_code and validates the SQLite projection, but it never recomputes or compares the top-level crawl status.",
+    "On source HEAD c57b1bcb788d6228bbade186667c3bed46ef1996, a valid one-page complete crawl remains `valid: true` after changing only `crawl-receipt.json.status` from `complete` to `failed`.",
+    "The existing crawl test file passes before the fix, so the new regression must fail on the source behavior and pass only when the verifier enforces the producer's status contract.",
+    "The fix belongs in verification and its direct tests; changing crawl production, public models, build configuration, or schemas is outside this task.",
+    "The first isolated candidate passed all 12 crawl tests and Ruff lint, but `ruff format --check` rejected its multiline `processed_count` sum; that candidate is not eligible for TaskSpec installation, and the replacement must satisfy the existing formatter without a later manual patch."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/contracts.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 2,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": false,
+    "applyPatch": true,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": false
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen two-file candidate that makes `verify_crawl_bundle` reject a top-level status inconsistent with the producer's deterministic page projection, while the targeted crawl tests and the full TraceFetch project check pass without changing valid crawl behavior.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "crawl-status-contract-requires-behavior-change"
+  ],
+  "requiresChanges": true
+}

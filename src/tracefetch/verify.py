@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
+import stat
 from collections import Counter
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +20,8 @@ from tracefetch.contracts import (
     EvidenceReceipt,
     LinkRecord,
 )
+
+MAX_CRAWL_RECEIPT_BYTES = 16 * 1024 * 1024
 
 
 def verify_bundle(bundle_dir: Path) -> list[str]:
@@ -207,17 +212,76 @@ def verification_payload(bundle_dir: Path) -> dict[str, object]:
     }
 
 
-def verify_crawl_bundle(root_dir: Path) -> list[str]:
+def _read_receipt_chunk(descriptor: int, size: int) -> bytes:
+    return os.read(descriptor, size)
+
+
+def _read_crawl_receipt_bytes(receipt_path: Path) -> tuple[bytes | None, str | None]:
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    nonblock = getattr(os, "O_NONBLOCK", None)
+    if not isinstance(nofollow, int) or not isinstance(nonblock, int):
+        return None, "crawl receipt is unreadable"
+    try:
+        descriptor = os.open(receipt_path, os.O_RDONLY | nofollow | nonblock)
+    except OSError:
+        return None, "crawl receipt is unreadable"
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            return None, "crawl receipt is unreadable"
+        if before.st_size > MAX_CRAWL_RECEIPT_BYTES:
+            return None, "crawl receipt exceeds the size limit"
+        chunks: list[bytes] = []
+        remaining = before.st_size
+        while remaining > 0:
+            requested = min(65536, remaining)
+            try:
+                chunk = _read_receipt_chunk(descriptor, requested)
+            except OSError:
+                return None, "crawl receipt is unreadable"
+            if len(chunk) != requested:
+                return None, "crawl receipt changed during verification"
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino, before.st_size) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+        ):
+            return None, "crawl receipt changed during verification"
+        return b"".join(chunks), None
+    except OSError:
+        return None, "crawl receipt is unreadable"
+    finally:
+        with suppress(OSError):
+            os.close(descriptor)
+
+
+def _load_crawl_receipt(receipt_path: Path) -> tuple[CrawlReceipt | None, list[str]]:
+    received, failure = _read_crawl_receipt_bytes(receipt_path)
+    if received is None:
+        return None, [failure or "crawl receipt is unreadable"]
+    try:
+        source = received.decode("utf-8")
+    except UnicodeDecodeError:
+        return None, ["crawl receipt is not valid UTF-8"]
+    try:
+        return CrawlReceipt.model_validate_json(source), []
+    except ValidationError:
+        return None, ["crawl receipt failed schema validation"]
+
+
+def _crawl_verification_result(root_dir: Path) -> tuple[CrawlReceipt | None, list[str]]:
     failures: list[str] = []
     root = root_dir.resolve()
     receipt_path = root_dir / "crawl-receipt.json"
     state_path = root_dir / "crawl.sqlite3"
-    if receipt_path.is_symlink() or state_path.is_symlink():
-        return ["crawl receipt and state must not be symlinks"]
-    try:
-        receipt = CrawlReceipt.model_validate_json(receipt_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, ValidationError) as exc:
-        return [f"invalid crawl receipt: {exc}"]
+    receipt, receipt_failures = _load_crawl_receipt(receipt_path)
+    if receipt is None:
+        return None, receipt_failures
+    if state_path.is_symlink():
+        return receipt, ["crawl receipt and state must not be symlinks"]
     try:
         state_digest = _sha256_file(state_path)
     except OSError as exc:
@@ -258,26 +322,48 @@ def verify_crawl_bundle(root_dir: Path) -> list[str]:
             failures.append(f"non-complete crawl page has bundle_path: {page.url}")
     if dict(sorted(failures_by_code.items())) != dict(sorted(receipt.failures_by_code.items())):
         failures.append("failures_by_code does not match page records")
+    statuses = Counter(page.status for page in receipt.pages)
+    processed_count = statuses["complete"] + statuses["failed"] + statuses["blocked"]
+    if statuses["pending"] and processed_count >= receipt.max_pages:
+        expected_status = "partial"
+    elif statuses["pending"]:
+        expected_status = "running"
+    elif statuses["complete"] and (statuses["failed"] or statuses["blocked"]):
+        expected_status = "partial"
+    elif statuses["complete"]:
+        expected_status = "complete"
+    else:
+        expected_status = "failed"
+    if receipt.status != expected_status:
+        failures.append("crawl status does not match page records")
     failures.extend(_verify_crawl_state(receipt, state_path))
-    return failures
+    return receipt, failures
+
+
+def verify_crawl_bundle(root_dir: Path) -> list[str]:
+    return _crawl_verification_result(root_dir)[1]
 
 
 def crawl_verification_payload(root_dir: Path) -> dict[str, object]:
-    failures = verify_crawl_bundle(root_dir)
-    receipt = CrawlReceipt.model_validate_json(
-        (root_dir / "crawl-receipt.json").read_text(encoding="utf-8")
+    receipt, failures = _crawl_verification_result(root_dir)
+    verified_pages = (
+        0 if receipt is None else sum(page.status == "complete" for page in receipt.pages)
     )
     return {
         "schema_version": "tracefetch.crawl-verification.v1",
-        "crawl_id": receipt.crawl_id,
+        "crawl_id": "" if receipt is None else receipt.crawl_id,
         "valid": not failures,
-        "verified_pages": sum(page.status == "complete" for page in receipt.pages),
+        "verified_pages": verified_pages,
         "failures": failures,
     }
 
 
 def _verify_crawl_state(receipt: CrawlReceipt, state_path: Path) -> list[str]:
     failures: list[str] = []
+    connection: sqlite3.Connection | None = None
+    metadata: dict[str, str] = {}
+    state_pages: list[dict[str, object]] = []
+    invalid_state = False
     try:
         connection = sqlite3.connect(f"file:{state_path}?mode=ro", uri=True)
         connection.row_factory = sqlite3.Row
@@ -291,11 +377,27 @@ def _verify_crawl_state(receipt: CrawlReceipt, state_path: Path) -> list[str]:
                 "from pages order by depth, added_at"
             )
         )
-    except sqlite3.Error as exc:
-        return [f"invalid crawl SQLite state: {exc}"]
+        state_pages = [
+            {
+                "url": str(row["url"]),
+                "depth": int(row["depth"]),
+                "status": "pending" if row["status"] == "running" else str(row["status"]),
+                "bundle_path": row["bundle_path"],
+                "error_code": row["error_code"],
+                "error_message": row["error_message"],
+            }
+            for row in rows
+        ]
+    except (sqlite3.Error, TypeError, ValueError, OverflowError):
+        invalid_state = True
     finally:
-        if "connection" in locals():
-            connection.close()
+        if connection is not None:
+            try:
+                connection.close()
+            except sqlite3.Error:
+                invalid_state = True
+    if invalid_state:
+        return ["crawl SQLite state is invalid"]
     expected_metadata = {
         "crawl_id": receipt.crawl_id,
         "root_url": receipt.root_url,
@@ -307,17 +409,6 @@ def _verify_crawl_state(receipt: CrawlReceipt, state_path: Path) -> list[str]:
     for key, expected in expected_metadata.items():
         if metadata.get(key) != expected:
             failures.append(f"crawl state metadata mismatch: {key}")
-    state_pages = [
-        {
-            "url": str(row["url"]),
-            "depth": int(row["depth"]),
-            "status": "pending" if row["status"] == "running" else str(row["status"]),
-            "bundle_path": row["bundle_path"],
-            "error_code": row["error_code"],
-            "error_message": row["error_message"],
-        }
-        for row in rows
-    ]
     receipt_pages = [
         page.model_dump(
             mode="json",
