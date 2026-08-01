@@ -1,11 +1,28 @@
 {
   "schemaVersion": "system-design-workbench.autopilot-task.v1",
   "id": "SDW-AUTO-906",
-  "status": "DRAFT",
+  "status": "READY",
   "execution": {
-    "kind": "bound-patch-intent-v1",
-    "patchSha256": null,
-    "patchBytes": null
+    "kind": "prepared-bound-patch-v1",
+    "patchSha256": "0ae0b5557ae6df2ce43018b62fa88df781d8bf09a4ca87c5ea38e2b2cf944cf8",
+    "patchBytes": 5016,
+    "preparation": {
+      "sourceHead": "cfda888e5ec20e7b37a273849430a2c15233c42b",
+      "project": {
+        "path": "autopilot/project.json",
+        "fileSha256": "d2f1e89e8857477de0c0bc0ff146520929ef542ce8d60eb04deffecad2117ba4",
+        "gitBlobOid": "80388aaf9961622a139398df38326c39d1619b4f",
+        "canonicalSha256": "75ee3877eee92352025bd212299b68918be915999834e2407d2f2a2f1351d295"
+      },
+      "task": {
+        "path": "autopilot/tasks/SDW-AUTO-906.json",
+        "fileSha256": "39d6f4e707d2f5bdb2aff8cfe954a9bc7728b71d200eef069f2ce230d047277d",
+        "gitBlobOid": "1d5eac3b0dccf7a3121ca7c12daafd66825bb75d",
+        "canonicalSha256": "0005df509781c4166992d39b2e6ac44c50407ed9d31276075c050f4b4874f177"
+      },
+      "candidateSnapshotSha256": "cc0dd3c84e2c44d130246b081918377c310116056d8c6deefeba8f8af4cbe31f",
+      "producer": null
+    }
   },
   "objective": "Make the bounded crawl-receipt open itself non-blocking and fail closed when the required safe-open primitives are unavailable. The shared verification layer must require both `os.O_NOFOLLOW` and `os.O_NONBLOCK`, open with `O_RDONLY | O_NOFOLLOW | O_NONBLOCK`, and map a missing flag or any open/fstat/read boundary failure to the fixed `crawl receipt is unreadable` result without traceback. A FIFO, socket, device, directory, or other non-regular target must never block verification and must remain unreadable. Preserve the accepted SDW-AUTO-905 16 MiB limit, exact full-chunk rule, pre/post fstat identity and size check, valid crawl summaries, malformed UTF-8/schema failures, CLI exit 6/empty stdout/bounded non-reflective JSON stderr, ordinary evidence verification, and all existing diagnostics.",
   "problemEvidence": [
@@ -54,7 +71,7 @@
   "authority": {
     "write": true,
     "invokeAgent": false,
-    "applyPatch": false,
+    "applyPatch": true,
     "commit": false,
     "push": false,
     "release": false,
