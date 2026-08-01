@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "system-design-workbench.autopilot-task.v1",
+  "id": "SDW-AUTO-904",
+  "status": "DRAFT",
+  "execution": {
+    "kind": "bound-patch-intent-v1",
+    "patchSha256": null,
+    "patchBytes": null
+  },
+  "objective": "Replace the rejected SDW-AUTO-903 crawl-receipt reader with a bounded open-handle implementation that satisfies the full read contract. Keep one O_NOFOLLOW file descriptor, fstat before and after, reject files larger than 16 MiB with `crawl receipt exceeds the size limit`, classify any non-full chunk as `crawl receipt changed during verification`, and map read OSError to the existing fixed `crawl receipt is unreadable` failure. Preserve fixed invalid UTF-8 and schema messages, valid crawl summaries, ordinary receipt verification, SQLite-state diagnostics, CLI exit 6, empty stdout, bounded non-reflective JSON stderr, and Ruff formatting.",
+  "problemEvidence": [
+    "Independent review of frozen SDW-AUTO-903 snapshot 387526abb2a0adc618b4fcc357ba6ddd936b394f0c0b41de521f31dd9a2c4c1d rejected it with `read-error-unhandled` and `short-read-undetected`; the v2 review decision was recorded and that one-shot lineage terminated without product commit or push.",
+    "A local injected `_read_receipt_chunk` OSError escaped `_load_crawl_receipt` instead of returning `crawl receipt is unreadable`, violating the fixed shared-layer failure contract and allowing a public CLI traceback.",
+    "A local injected partial read returned fewer bytes than requested but non-empty data; the candidate continued reading and later reported schema validation rather than `crawl receipt changed during verification`.",
+    "The minimal fix is at the shared chunk loop: catch OSError and require every read to return exactly the requested byte count. Regression tests must exercise both direct payload behavior and public CLI bounded output.",
+    "The complete candidate also retains the original 903 oversized, mid-read truncation, exact-size, valid-summary, ordinary-receipt, and downstream diagnostics coverage because the rejected patch was never committed as a product change."
+  ],
+  "allowedPaths": [
+    "src/tracefetch/verify.py",
+    "tests/test_cli.py",
+    "tests/test_crawl.py"
+  ],
+  "forbiddenPaths": [
+    ".github",
+    ".gitignore",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "autopilot",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src/tracefetch/cli.py",
+    "src/tracefetch/contracts.py",
+    "src/tracefetch/crawl.py",
+    "src/tracefetch/errors.py",
+    "uv.lock"
+  ],
+  "baselineChecks": [
+    "cli-test",
+    "crawl-test"
+  ],
+  "acceptanceChecks": [
+    "cli-test",
+    "crawl-test",
+    "project-check"
+  ],
+  "budget": {
+    "maxMinutes": 30,
+    "maxChangedFiles": 3,
+    "maxVerificationAttempts": 1
+  },
+  "authority": {
+    "write": true,
+    "invokeAgent": false,
+    "applyPatch": false,
+    "commit": false,
+    "push": false,
+    "release": false,
+    "network": false
+  },
+  "externalOutcome": "An independent reviewer accepts a frozen successor candidate that closes both concrete SDW-AUTO-903 review findings while preserving the full bounded crawl-receipt contract; after close, the exact product commit is pushed on its lineage branch and a delivery ref-match observation is exported without claiming PR, merge, release, or production acceptance.",
+  "stopConditions": [
+    "budget-exhausted",
+    "verification-attempts-exhausted",
+    "scope-expansion-required",
+    "protected-path-change-required",
+    "dirty-working-tree",
+    "task-input-changed",
+    "new-authority-required",
+    "receipt-boundary-contract-requires-behavior-change"
+  ],
+  "requiresChanges": true
+}
